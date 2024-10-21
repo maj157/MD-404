@@ -50,6 +50,9 @@ int main() {
     initializeBoard(player1Board);
     initializeBoard(player2Board);
     
+    // Welcome statement
+    printf("Welcome to Battleship!\n\n");
+    
     // Ask for tracking difficulty
     int showMisses = askDifficulty();
     
