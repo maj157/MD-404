@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <time.h> //Needed for random number generation
 #define GRID_SIZE 10
 
 // Function to initialize the game board with water '~'
@@ -42,10 +42,26 @@ int askDifficulty() {
     return (difficulty == 1) ? 1 : 0;  // Return 1 for easy, 0 for hard
 }
 
+// Function to get player names
+void getPlayerNames(char player1[50], char player2[50]) {
+    printf("Enter Player 1's name: ");
+    scanf("%s", player1);
+    
+    printf("Enter Player 2's name: ");
+    scanf("%s", player2);
+}
+
+// Function to randomly choose which player goes first
+int chooseFirstPlayer() {
+    srand(time(NULL));  // Seed the random number generator with the current time
+    return rand() % 2;  // Returns 0 for Player 1 or 1 for Player 2
+}
+
 int main() {
     char player1Board[GRID_SIZE][GRID_SIZE];
     char player2Board[GRID_SIZE][GRID_SIZE];
-    
+    char player1[50], player2[50];
+
     // Initialize both players' boards
     initializeBoard(player1Board);
     initializeBoard(player2Board);
@@ -55,12 +71,23 @@ int main() {
     
     // Ask for tracking difficulty
     int showMisses = askDifficulty();
-    
+
+    // Get player names
+    getPlayerNames(player1, player2);
+
+    // Randomly choose which player goes first
+    int firstPlayer = chooseFirstPlayer();
+    if (firstPlayer == 0) {
+        printf("%s will go first!\n", player1);
+    } else {
+        printf("%s will go first!\n", player2);
+    }
+
     // Display both boards initially
-    printf("Player 1's board:\n");
+    printf("%s's board:\n", player1);
     displayBoard(player1Board, showMisses);
     
-    printf("Player 2's board:\n");
+    printf("%s's board:\n", player2);
     displayBoard(player2Board, showMisses);
 
     return 0;
