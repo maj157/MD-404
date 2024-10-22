@@ -3,6 +3,49 @@
 #include <time.h> //Needed for random number generation
 #define GRID_SIZE 10
 
+// Function prototypes
+void initializeBoard(char board[GRID_SIZE][GRID_SIZE]);
+void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses);
+int askDifficulty();
+void getPlayerNames(char player1[50], char player2[50]);
+int chooseFirstPlayer();
+
+int main() {
+    char player1Board[GRID_SIZE][GRID_SIZE];
+    char player2Board[GRID_SIZE][GRID_SIZE];
+    char player1[50], player2[50];
+
+    // Initialize both players' boards
+    initializeBoard(player1Board);
+    initializeBoard(player2Board);
+    
+    // Welcome statement
+    printf("Welcome to Battleship!\n\n");
+    
+    // Ask for tracking difficulty
+    int showMisses = askDifficulty();
+
+    // Get player names
+    getPlayerNames(player1, player2);
+
+    // Randomly choose which player goes first
+    int firstPlayer = chooseFirstPlayer();
+    if (firstPlayer == 0) {
+        printf("%s will go first!\n", player1);
+    } else {
+        printf("%s will go first!\n", player2);
+    }
+
+    // Display both boards initially
+    printf("%s's board:\n", player1);
+    displayBoard(player1Board, showMisses);
+    
+    printf("%s's board:\n", player2);
+    displayBoard(player2Board, showMisses);
+
+    return 0;
+}
+
 // Function to initialize the game board with water '~'
 void initializeBoard(char board[GRID_SIZE][GRID_SIZE]) {
     for (int i = 0; i < GRID_SIZE; i++) {
@@ -55,40 +98,4 @@ void getPlayerNames(char player1[50], char player2[50]) {
 int chooseFirstPlayer() {
     srand(time(NULL));  // Seed the random number generator with the current time
     return rand() % 2;  // Returns 0 for Player 1 or 1 for Player 2
-}
-
-int main() {
-    char player1Board[GRID_SIZE][GRID_SIZE];
-    char player2Board[GRID_SIZE][GRID_SIZE];
-    char player1[50], player2[50];
-
-    // Initialize both players' boards
-    initializeBoard(player1Board);
-    initializeBoard(player2Board);
-    
-    // Welcome statement
-    printf("Welcome to Battleship!\n\n");
-    
-    // Ask for tracking difficulty
-    int showMisses = askDifficulty();
-
-    // Get player names
-    getPlayerNames(player1, player2);
-
-    // Randomly choose which player goes first
-    int firstPlayer = chooseFirstPlayer();
-    if (firstPlayer == 0) {
-        printf("%s will go first!\n", player1);
-    } else {
-        printf("%s will go first!\n", player2);
-    }
-
-    // Display both boards initially
-    printf("%s's board:\n", player1);
-    displayBoard(player1Board, showMisses);
-    
-    printf("%s's board:\n", player2);
-    displayBoard(player2Board, showMisses);
-
-    return 0;
 }
