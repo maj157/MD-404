@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h> //Needed for random number generation
 #include <string.h> //In order to use strcmp()
+#include <ctype.h> // included to provide functions for character handling 
 
 #define GRID_SIZE 10
 
@@ -11,8 +12,12 @@ void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses);
 int askDifficulty();
 void getPlayerNames(char player1[50], char player2[50]);
 int chooseFirstPlayer();
-int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipName);
+int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipName, const char* playerName); // Function to clear the input buffer safely
 
+void clearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);  // Clear remaining characters from input buffer
+}
 
 int main() {
     char player1Board[GRID_SIZE][GRID_SIZE];
@@ -49,17 +54,17 @@ int main() {
 
     // Fleet setup for Player 1
     printf("\n%s, it's time to place your fleet!\n", player1);
-    placeShip(player1Board, 5, "Carrier");
-    placeShip(player1Board, 4, "Battleship");
-    placeShip(player1Board, 3, "Destroyer");
-    placeShip(player1Board, 2, "Submarine");
-    
+    placeShip(player1Board, 5, "Carrier", player1);
+    placeShip(player1Board, 4, "Battleship", player1);
+    placeShip(player1Board, 3, "Destroyer", player1);
+    placeShip(player1Board, 2, "Submarine", player1);
+
     // Fleet setup for Player 2
     printf("\n%s, it's time to place your fleet!\n", player2);
-    placeShip(player2Board, 5, "Carrier");
-    placeShip(player2Board, 4, "Battleship");
-    placeShip(player2Board, 3, "Destroyer");
-    placeShip(player2Board, 2, "Submarine");
+    placeShip(player2Board, 5, "Carrier", player2);
+    placeShip(player2Board, 4, "Battleship", player2);
+    placeShip(player2Board, 3, "Destroyer", player2);
+    placeShip(player2Board, 2, "Submarine", player2);
 
     return 0;
 }
@@ -99,7 +104,11 @@ int askDifficulty() {
     printf("1. Easy (Track hits and misses)\n");
     printf("2. Hard (Track only hits)\n");
     printf("Enter 1 or 2: ");
-    scanf("%d", &difficulty);
+    if (scanf("%d", &difficulty) != 1 || (difficulty != 1 && difficulty != 2)) {
+        printf("Invalid input. Defaulting to hard mode.\n");
+        difficulty = 2;
+    }
+    clearInputBuffer();  // Clear input buffer after scanf
     return (difficulty == 1) ? 1 : 0;  // Return 1 for easy, 0 for hard
 }
 
@@ -119,18 +128,23 @@ int chooseFirstPlayer() {
 }
 
 // Function to place a ship on the board
-int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipName) {
+int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipName, const char* playerName) {
     int row;
     char col;  // Use char for column input
+    char orientation[20];  // Increased buffer size to handle larger inputs
 
-    while (1) { //infinite loop 
-        // Ask for the starting position and orientation
-        printf("Placing your %s (size %d):\n", shipName, shipSize);
-        printf("Enter starting position (row column, e.g., 3 B): ");
-        scanf("%d %c", &row, &col);
-        while ((getchar()) != '\n');  // Clear input buffer
+    while (1) {
+        // Display player name before asking for the starting position
+        printf("%s, placing your %s (size %d):\n", playerName, shipName, shipSize);
+        printf("%s, enter starting position (row column, e.g., 3 B): ", playerName);
+        if (scanf("%d %c", &row, &col) != 2) {
+            printf("Invalid input. Try again.\n");
+            clearInputBuffer();  // Clear input buffer
+            continue;
+        }
+        clearInputBuffer();  // Clear input buffer
 
-        col = col - 'A';  // Convert column letter to index (0-9)
+        col = toupper(col) - 'A';  // Convert column letter to index (0-9) and make it case-insensitive
         row--;  // Adjust row input (1-10) to array index (0-9)
 
         // Initialize validPlacement for each iteration
@@ -143,17 +157,22 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipNa
         }
 
         printf("Enter orientation (horizontal or vertical): ");
-        char orientation[10];  // Used to store the user's input for orientation
-        scanf("%s", orientation);
-        while ((getchar()) != '\n');  // Clear input buffer
+        scanf("%19s", orientation);  // Limit input to avoid buffer overflow
+        clearInputBuffer();  // Clear input buffer
+
+        // Convert orientation to lowercase to make it case-insensitive
+        for (int i = 0; orientation[i]; i++) {
+            orientation[i] = tolower(orientation[i]);
+        }
 
         // Check if the ship can be placed within the grid boundaries
         if (strcmp(orientation, "horizontal") == 0) {
+            // Horizontal: check if ship fits within the row
             if (col + shipSize > GRID_SIZE) {
                 printf("Error: Ship placement exceeds grid boundaries horizontally. Try again.\n");
-                validPlacement = 0;  // If the ship exceeds the grid size, invalidate the placement
+                validPlacement = 0;
             } else {
-                // Check if the ship overlaps with another ship
+                // Check for overlapping ships
                 for (int i = 0; i < shipSize; i++) {
                     if (board[row][col + i] != '~') {
                         printf("Error: Ship overlaps with another ship at row %d and column %c. Try again.\n", row + 1, 'A' + col + i);
@@ -163,11 +182,12 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipNa
                 }
             }
         } else if (strcmp(orientation, "vertical") == 0) {
+            // Vertical: check if ship fits within the column
             if (row + shipSize > GRID_SIZE) {
                 printf("Error: Ship placement exceeds grid boundaries vertically. Try again.\n");
-                validPlacement = 0;  // If the ship exceeds the grid size, invalidate the placement
+                validPlacement = 0;
             } else {
-                // Check if the ship overlaps with another ship
+                // Check for overlapping ships
                 for (int i = 0; i < shipSize; i++) {
                     if (board[row + i][col] != '~') {
                         printf("Error: Ship overlaps with another ship at row %d and column %c. Try again.\n", row + 1 + i, 'A' + col);
@@ -186,11 +206,17 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipNa
             printf("%s placed successfully!\n\n", shipName);
             if (strcmp(orientation, "horizontal") == 0) {
                 for (int i = 0; i < shipSize; i++) {
-                    board[row][col + i] = shipName[0];  // Use the first letter of the ship name
+                    // Ensure we are not exceeding the boundaries of the grid
+                    if (col + i < GRID_SIZE) {
+                        board[row][col + i] = shipName[0];  // Use the first letter of the ship name
+                    }
                 }
             } else {
                 for (int i = 0; i < shipSize; i++) {
-                    board[row + i][col] = shipName[0];  // Use the first letter of the ship name
+                    // Ensure we are not exceeding the boundaries of the grid
+                    if (row + i < GRID_SIZE) {
+                        board[row + i][col] = shipName[0];  // Use the first letter of the ship name
+                    }
                 }
             }
             displayBoard(board, 1);  // Show the updated board for debugging purposes
@@ -199,5 +225,3 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipNa
     }
     return 1;
 }
-
-
