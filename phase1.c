@@ -13,11 +13,10 @@ int askDifficulty();
 void getPlayerNames(char player1[50], char player2[50]);
 int chooseFirstPlayer();
 int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipName, const char* playerName); // Function to clear the input buffer safely
-
-void clearInputBuffer() {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);  // Clear remaining characters from input buffer
-}
+void clearInputBuffer();
+int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col);
+int checkWin(char board[GRID_SIZE][GRID_SIZE]);
+    
 
 int main() {
     char player1Board[GRID_SIZE][GRID_SIZE];
@@ -65,6 +64,63 @@ int main() {
     placeShip(player2Board, 4, "Battleship", player2);
     placeShip(player2Board, 3, "Destroyer", player2);
     placeShip(player2Board, 2, "Submarine", player2);
+
+    // Turn-based play
+    int gameOver = 0;
+    int currentPlayer = firstPlayer;
+    while (!gameOver) {
+        if (currentPlayer == 0) {
+            printf("\n%s's turn to fire!\n", player1);
+            displayBoard(player2Board, 1);  // Show player 2's board (opponent's grid)
+
+            // Fire command
+            int row;
+            char col;
+            printf("Enter coordinates to fire (row column, e.g., 3 B): ");
+            if (scanf("%d %c", &row, &col) != 2) {
+                printf("Invalid input. Try again.\n");
+                clearInputBuffer();
+                continue;
+            }
+            clearInputBuffer();
+
+            col = toupper(col) - 'A';  // Convert column letter to index
+            row--;  // Convert row to 0-based index
+
+            if (fireAt(player2Board, row, col)) {
+                if (checkWin(player2Board)) {
+                    printf("\n%s wins!\n", player1);
+                    gameOver = 1;
+                }
+            }
+            currentPlayer = 1;  // Switch to player 2
+        } else {
+            printf("\n%s's turn to fire!\n", player2);
+            displayBoard(player1Board, 1);  // Show player 1's board (opponent's grid)
+
+            // Fire command
+            int row;
+            char col;
+            printf("Enter coordinates to fire (row column, e.g., 3 B): ");
+            if (scanf("%d %c", &row, &col) != 2) {
+                printf("Invalid input. Try again.\n");
+                clearInputBuffer();
+                continue;
+            }
+            clearInputBuffer();
+
+            col = toupper(col) - 'A';  // Convert column letter to index
+            row--;  // Convert row to 0-based index
+
+            if (fireAt(player1Board, row, col)) {
+                if (checkWin(player1Board)) {
+                    printf("\n%s wins!\n", player2);
+                    gameOver = 1;
+                }
+            }
+            currentPlayer = 0;  // Switch to player 1
+        }
+    }
 
     return 0;
 }
@@ -224,4 +280,43 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipNa
         }
     }
     return 1;
+}
+
+// Function to clear the input buffer safely
+void clearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+// Function to fire at a coordinate
+int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col) {
+    if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) {
+        printf("Invalid coordinates. Try again.\n");
+        return 0;
+    }
+
+    if (board[row][col] == '~') {
+        printf("Miss!\n");
+        board[row][col] = 'o';  // Mark miss
+    } else if (board[row][col] == '*' || board[row][col] == 'o') {
+        printf("Already fired at this location. Try again.\n");
+        return 0;
+    } else {
+        printf("Hit!\n");
+        board[row][col] = '*';  // Mark hit
+    }
+
+    return 1;
+}
+
+// Function to check if all ships have been sunk
+int checkWin(char board[GRID_SIZE][GRID_SIZE]) {
+    for (int i = 0; i < GRID_SIZE; i++) {
+        for (int j = 0; j < GRID_SIZE; j++) {
+            if (board[i][j] != '~' && board[i][j] != '*' && board[i][j] != 'o') {
+                return 0;  // There are still ships left
+            }
+        }
+    }
+    return 1;  // All ships have been sunk
 }
