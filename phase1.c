@@ -8,19 +8,22 @@
 
 // Function prototypes
 void initializeBoard(char board[GRID_SIZE][GRID_SIZE]);
-void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses);
+void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShips); // added parameter hideShips for game play
 int askDifficulty();
 void getPlayerNames(char player1[50], char player2[50]);
 int chooseFirstPlayer();
 int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipName, const char* playerName); // Function to clear the input buffer safely
 void clearInputBuffer();
 int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col);
+int radarSweep(char board[GRID_SIZE][GRID_SIZE], int row, int col); // Function prototype for radar sweep
 int checkWin(char board[GRID_SIZE][GRID_SIZE]);  
 
 int main() {
     char player1Board[GRID_SIZE][GRID_SIZE];
     char player2Board[GRID_SIZE][GRID_SIZE];
     char player1[50], player2[50];
+    int player1RadarCount = 0;
+    int player2RadarCount = 0;
 
     // Initialize both players' boards
     initializeBoard(player1Board);
@@ -43,13 +46,6 @@ int main() {
         printf("%s will go first!\n", player2);
     }
 
-    //Display both boards initially
-    //printf("%s's board:\n", player1);
-    //displayBoard(player1Board, showMisses);
-    
-    //printf("%s's board:\n", player2);
-    //displayBoard(player2Board, showMisses);
-
     // Fleet setup for Player 1
     printf("\n%s, it's time to place your fleet!\n", player1);
     placeShip(player1Board, 5, "Carrier", player1);
@@ -67,57 +63,129 @@ int main() {
     // Turn-based play
     int gameOver = 0;
     int currentPlayer = firstPlayer;
+    
     while (!gameOver) {
         if (currentPlayer == 0) {
-            printf("\n%s's turn to fire!\n", player1);
-            displayBoard(player2Board, 1);  // Show player 2's board (opponent's grid)
+            printf("\n%s's turn to play!\n", player1);
+            displayBoard(player2Board, showMisses, 1);  // Show player 2's board (opponent's grid), hide ships
+            
+            // Display available moves
+            printf("Available moves: Fire, Radar\n");
+            
+            char command[10];
+            printf("Enter 'fire' to fire at a location or 'radar' to use a radar sweep: ");
+            scanf("%s", command);
 
-            // Fire command
-            int row;
-            char col;
-            printf("Enter coordinates to fire (row column, e.g., 3 B): ");
-            if (scanf("%d %c", &row, &col) != 2) {
-                printf("Invalid input. Try again.\n");
+            if (strcmp(command, "fire") == 0) {
+                // Fire command logic
+                int row;
+                char col;
+                printf("Enter coordinates to fire (row column, e.g., 3 B): ");
+                if (scanf("%d %c", &row, &col) != 2) {
+                    printf("Invalid input. Try again.\n");
+                    clearInputBuffer();
+                    continue;
+                }
                 clearInputBuffer();
+                col = toupper(col) - 'A';  // Convert column letter to index
+                row--;  // Convert row to 0-based index
+
+                if (fireAt(player2Board, row, col)) {
+                    if (checkWin(player2Board)) {
+                        printf("\n%s wins!\n", player1);
+                        gameOver = 1;
+                    }
+                }
+                currentPlayer = 1;  // Switch to player 2
+
+            } else if (strcmp(command, "radar") == 0) {
+                // Radar command logic
+                if (player1RadarCount >= 3) {
+                    printf("You have already used all 3 radar sweeps.\n");
+                    currentPlayer = 1;  // Switch turn
+                    continue;
+                }
+
+                int row;
+                char col;
+                printf("Enter top-left coordinates for radar sweep (row column, e.g., 3 B): ");
+                if (scanf("%d %c", &row, &col) != 2) {
+                    printf("Invalid input. Try again.\n");
+                    clearInputBuffer();
+                    continue;
+                }
+                clearInputBuffer();
+                col = toupper(col) - 'A';  // Convert column letter to index
+                row--;  // Convert row to 0-based index
+
+                radarSweep(player2Board, row, col);
+                player1RadarCount++;  // Increment radar usage count
+                currentPlayer = 1;  // Switch to player 2
+            } else {
+                printf("Invalid move. Try again.\n");
                 continue;
             }
-            clearInputBuffer();
 
-            col = toupper(col) - 'A';  // Convert column letter to index
-            row--;  // Convert row to 0-based index
-
-            if (fireAt(player2Board, row, col)) {
-                if (checkWin(player2Board)) {
-                    printf("\n%s wins!\n", player1);
-                    gameOver = 1;
-                }
-            }
-            currentPlayer = 1;  // Switch to player 2
         } else {
-            printf("\n%s's turn to fire!\n", player2);
-            displayBoard(player1Board, 1);  // Show player 1's board (opponent's grid)
+            printf("\n%s's turn to play!\n", player2);
+            displayBoard(player1Board, showMisses, 1);  // Show player 1's board (opponent's grid), hide ships
+            
+            // Display available moves
+            printf("Available moves: Fire, Radar\n");
+            
+            char command[10];
+            printf("Enter 'fire' to fire at a location or 'radar' to use a radar sweep: ");
+            scanf("%s", command);
 
-            // Fire command
-            int row;
-            char col;
-            printf("Enter coordinates to fire (row column, e.g., 3 B): ");
-            if (scanf("%d %c", &row, &col) != 2) {
-                printf("Invalid input. Try again.\n");
+            if (strcmp(command, "fire") == 0) {
+                // Fire command logic
+                int row;
+                char col;
+                printf("Enter coordinates to fire (row column, e.g., 3 B): ");
+                if (scanf("%d %c", &row, &col) != 2) {
+                    printf("Invalid input. Try again.\n");
+                    clearInputBuffer();
+                    continue;
+                }
                 clearInputBuffer();
+                col = toupper(col) - 'A';  // Convert column letter to index
+                row--;  // Convert row to 0-based index
+
+                if (fireAt(player1Board, row, col)) {
+                    if (checkWin(player1Board)) {
+                        printf("\n%s wins!\n", player2);
+                        gameOver = 1;
+                    }
+                }
+                currentPlayer = 0;  // Switch to player 1
+
+            } else if (strcmp(command, "radar") == 0) {
+                // Radar command logic
+                if (player2RadarCount >= 3) {
+                    printf("You have already used all 3 radar sweeps.\n");
+                    currentPlayer = 0;  // Switch turn
+                    continue;
+                }
+
+                int row;
+                char col;
+                printf("Enter top-left coordinates for radar sweep (row column, e.g., 3 B): ");
+                if (scanf("%d %c", &row, &col) != 2) {
+                    printf("Invalid input. Try again.\n");
+                    clearInputBuffer();
+                    continue;
+                }
+                clearInputBuffer();
+                col = toupper(col) - 'A';  // Convert column letter to index
+                row--;  // Convert row to 0-based index
+
+                radarSweep(player1Board, row, col);
+                player2RadarCount++;  // Increment radar usage count
+                currentPlayer = 0;  // Switch to player 1
+            } else {
+                printf("Invalid move. Try again.\n");
                 continue;
             }
-            clearInputBuffer();
-
-            col = toupper(col) - 'A';  // Convert column letter to index
-            row--;  // Convert row to 0-based index
-
-            if (fireAt(player1Board, row, col)) {
-                if (checkWin(player1Board)) {
-                    printf("\n%s wins!\n", player2);
-                    gameOver = 1;
-                }
-            }
-            currentPlayer = 0;  // Switch to player 1
         }
     }
 
@@ -134,13 +202,15 @@ void initializeBoard(char board[GRID_SIZE][GRID_SIZE]) {
 }
 
 // Function to display the game board with row and column labels
-void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses) {
+void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShips) {
     printf("  A B C D E F G H I J\n");  // Column labels
     for (int i = 0; i < GRID_SIZE; i++) {
         printf("%2d ", i + 1);  // Row labels
         for (int j = 0; j < GRID_SIZE; j++) {
-            // If showMisses is 1, show both hits (*) and misses (o), otherwise only show hits
-            if (board[i][j] == '*' || (showMisses && board[i][j] == 'o')) {
+            // Hide ships from the opponent if hideShips is 1
+            if (hideShips && (board[i][j] != '*' && board[i][j] != 'o')) {
+                printf("~ ");  // Display water where the ships are hidden
+            } else if (board[i][j] == '*' || (showMisses && board[i][j] == 'o')) {
                 printf("%c ", board[i][j]);
             } else if (board[i][j] == 'o' && !showMisses) {
                 printf("~ ");  // In hard mode, replace misses 'o' with water '~'
@@ -274,7 +344,7 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipNa
                     }
                 }
             }
-            displayBoard(board, 1);  // Show the updated board for debugging purposes
+            displayBoard(board, 1, 0);  // Show the updated board for debugging purposes
             break;  // Exit the loop when placement is valid
         }
     }
@@ -308,6 +378,30 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col) {
     return 1;
 }
 
+// Function to perform a radar sweep in a 2x2 area and reveal if any ships are found
+int radarSweep(char board[GRID_SIZE][GRID_SIZE], int row, int col) {
+    int foundShip = 0; // To track if a ship is found in the 2x2 area
+
+    // Check the 2x2 area starting from (row, col)
+    for (int i = row; i < row + 2 && i < GRID_SIZE; i++) {
+        for (int j = col; j < col + 2 && j < GRID_SIZE; j++) {
+            // If a cell is not water (~), a ship part is present
+            if (board[i][j] != '~' && board[i][j] != '*' && board[i][j] != 'o') {
+                foundShip = 1;
+            }
+        }
+    }
+
+    // Output result
+    if (foundShip) {
+        printf("Enemy ships found!\n");
+    } else {
+        printf("No enemy ships found.\n");
+    }
+
+    return foundShip;  // Return whether a ship was found or not
+}
+
 // Function to check if all ships have been sunk
 int checkWin(char board[GRID_SIZE][GRID_SIZE]) {
     for (int i = 0; i < GRID_SIZE; i++) {
@@ -319,3 +413,4 @@ int checkWin(char board[GRID_SIZE][GRID_SIZE]) {
     }
     return 1;  // All ships have been sunk
 }
+
