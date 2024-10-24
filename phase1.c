@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h> //Needed for random number generation
+#include <time.h> 
 #include <string.h> //In order to use strcmp()
 #include <ctype.h> // included to provide functions for character handling 
 
