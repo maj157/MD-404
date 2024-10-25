@@ -5,7 +5,8 @@
 #include <ctype.h> // included to provide functions for character handling 
 
 #define GRID_SIZE 10
-#define MAX_SMOKES 5 // Maximum number of smokes a player can have
+
+char radar[GRID_SIZE][GRID_SIZE];  // Radar grid to track smoked areas
 
 // Function prototypes
 void initializeBoard(char board[GRID_SIZE][GRID_SIZE]);
@@ -16,28 +17,26 @@ int chooseFirstPlayer();  // Randomly choose which player goes first
 int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char* shipName, const char* playerName); 
 void clearInputBuffer(); // Function to clear the input buffer safely
 int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col); // Fire at a specific coordinate
-int radarSweep(char board[GRID_SIZE][GRID_SIZE], char smokeBoard[GRID_SIZE][GRID_SIZE], int row, int col); // Function prototype for radar sweep with smokeBoard
-int smokeScreen(char board[GRID_SIZE][GRID_SIZE], char smokeBoard[GRID_SIZE][GRID_SIZE], int row, int col); // Function prototype for smoke screen
-int checkWin(char board[GRID_SIZE][GRID_SIZE]);  
+int radarSweep(char board[GRID_SIZE][GRID_SIZE], int row, int col); // Function prototype for radar sweep with smokeBoard
+
+// Smoke Screen Functionality
+void applySmokeScreen(char board[GRID_SIZE][GRID_SIZE], int row, int col);
+void clearScreen();
+
+int checkWin(char board[GRID_SIZE][GRID_SIZE]);
 
 int main() {
     // Create boards for Player 1 and Player 2
     char player1Board[GRID_SIZE][GRID_SIZE];
     char player2Board[GRID_SIZE][GRID_SIZE];
-    char player1SmokeBoard[GRID_SIZE][GRID_SIZE];  // Board to track smoke screens
-    char player2SmokeBoard[GRID_SIZE][GRID_SIZE];
     char player1[50], player2[50]; // Player names
     int player1RadarCount = 0;
     int player2RadarCount = 0;
-    int player1Smokes = 0;  // Tracks smoke screens for player 1
-    int player2Smokes = 0;  // Tracks smoke screens for player 2
     
-
     // Initialize both players' boards
     initializeBoard(player1Board);
     initializeBoard(player2Board);
-    initializeBoard(player1SmokeBoard);  // Initialize smoke screen board for player 1
-    initializeBoard(player2SmokeBoard);  // Initialize smoke screen board for player 2
+    initializeBoard(radar);  // Initialize radar (used for smoke screen)
     
     // Welcome statement
     printf("Welcome to Battleship!\n\n");
@@ -83,7 +82,7 @@ int main() {
             printf("Available moves: Fire, Radar, Smoke\n");
             
             char command[10];
-            printf("Enter 'fire' to fire, 'radar' to use a radar sweep, or 'smoke' to deploy a smoke screen: ");
+            printf("Enter 'fire' to fire at a location, 'radar' to use a radar sweep, or 'smoke' to apply a smoke screen: ");
             scanf("%s", command);
 
             if (strcmp(command, "fire") == 0) {
@@ -128,20 +127,14 @@ int main() {
                 col = toupper(col) - 'A';  // Convert column letter to index
                 row--;  // Convert row to 0-based index
 
-                radarSweep(player2Board, player2SmokeBoard, row, col); // Pass player 2's smokeBoard
+                radarSweep(player2Board, row, col);
                 player1RadarCount++;  // Increment radar usage count
                 currentPlayer = 1;  // Switch to player 2
             } else if (strcmp(command, "smoke") == 0) {
                 // Smoke screen logic
-                if (player1Smokes >= MAX_SMOKES) {
-                    printf("You have already used your allowed smoke screens.\n");
-                    currentPlayer = 1;  // Switch turn
-                    continue;
-                }
-
                 int row;
                 char col;
-                printf("Enter top-left coordinates for smoke screen (row column, e.g., 3 B): ");
+                printf("Enter coordinates to apply smoke screen (row column, e.g., 3 B): ");
                 if (scanf("%d %c", &row, &col) != 2) {
                     printf("Invalid input. Try again.\n");
                     clearInputBuffer();
@@ -151,10 +144,8 @@ int main() {
                 col = toupper(col) - 'A';  // Convert column letter to index
                 row--;  // Convert row to 0-based index
 
-                smokeScreen(player2Board, player2SmokeBoard, row, col);  // Deploy smoke screen
-                player1Smokes++;  // Increment smoke screen usage
+                applySmokeScreen(player2Board, row, col);  // Apply smoke screen
                 currentPlayer = 1;  // Switch to player 2
-
             } else {
                 printf("Invalid move. Try again.\n");
                 continue;
@@ -168,7 +159,7 @@ int main() {
             printf("Available moves: Fire, Radar, Smoke\n");
             
             char command[10];
-            printf("Enter 'fire' to fire, 'radar' to use a radar sweep, or 'smoke' to deploy a smoke screen: ");
+            printf("Enter 'fire' to fire at a location, 'radar' to use a radar sweep, or 'smoke' to apply a smoke screen: ");
             scanf("%s", command);
 
             if (strcmp(command, "fire") == 0) {
@@ -213,20 +204,14 @@ int main() {
                 col = toupper(col) - 'A';  // Convert column letter to index
                 row--;  // Convert row to 0-based index
 
-                radarSweep(player1Board, player1SmokeBoard, row, col); // Pass player 1's smokeBoard
+                radarSweep(player1Board, row, col);
                 player2RadarCount++;  // Increment radar usage count
                 currentPlayer = 0;  // Switch to player 1
             } else if (strcmp(command, "smoke") == 0) {
                 // Smoke screen logic
-                if (player2Smokes >= MAX_SMOKES) {
-                    printf("You have already used your allowed smoke screens.\n");
-                    currentPlayer = 0;  // Switch turn
-                    continue;
-                }
-
                 int row;
                 char col;
-                printf("Enter top-left coordinates for smoke screen (row column, e.g., 3 B): ");
+                printf("Enter coordinates to apply smoke screen (row column, e.g., 3 B): ");
                 if (scanf("%d %c", &row, &col) != 2) {
                     printf("Invalid input. Try again.\n");
                     clearInputBuffer();
@@ -236,10 +221,8 @@ int main() {
                 col = toupper(col) - 'A';  // Convert column letter to index
                 row--;  // Convert row to 0-based index
 
-                smokeScreen(player1Board, player1SmokeBoard, row, col);  // Deploy smoke screen
-                player2Smokes++;  // Increment smoke screen usage
+                applySmokeScreen(player1Board, row, col);  // Apply smoke screen
                 currentPlayer = 0;  // Switch to player 1
-
             }else {
                 printf("Invalid move. Try again.\n");
                 continue;
@@ -437,24 +420,20 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col) {
 }
 
 // Function to perform a radar sweep in a 2x2 area and reveal if any ships are found
-int radarSweep(char board[GRID_SIZE][GRID_SIZE], char smokeBoard[GRID_SIZE][GRID_SIZE], int row, int col) {
+int radarSweep(char board[GRID_SIZE][GRID_SIZE], int row, int col) {
     int foundShip = 0; // To track if a ship is found in the 2x2 area
 
-    // Check the 2x2 area starting from (row, col)
     for (int i = row; i < row + 2 && i < GRID_SIZE; i++) {
         for (int j = col; j < col + 2 && j < GRID_SIZE; j++) {
-            // If a cell is obscured by a smoke screen, count it as a miss
-            if (smokeBoard[i][j] == 1) {
-                printf("Enemy ships found!");
-                return 0; //exit function
-            } 
-            else if (board[i][j] != '~' && board[i][j] != '*' && board[i][j] != 'o') {
-                foundShip = 1; // Found a ship
+            if (radar[i][j] == 'S') {
+                printf("Enemy ships not found!\n");
+                return 0;
+            } else if (board[i][j] != '~' && board[i][j] != '*' && board[i][j] != 'o') {
+                foundShip = 1;
             }
         }
     }
 
-    // Output result
     if (foundShip) {
         printf("Enemy ships found!\n");
     } else {
@@ -464,17 +443,24 @@ int radarSweep(char board[GRID_SIZE][GRID_SIZE], char smokeBoard[GRID_SIZE][GRID
     return foundShip;  // Return whether a ship was found or not
 }
 
-// Function to deploy a smoke screen, hiding a 2x2 area from radar sweeps
-int smokeScreen(char board[GRID_SIZE][GRID_SIZE], char smokeBoard[GRID_SIZE][GRID_SIZE], int row, int col) {
-    printf("Deploying smoke screen at %d %c.\n", row + 1, col + 'A');
-    // Obscure a 2x2 area with a smoke screen
-    for (int i = row; i < row + 2 && i < GRID_SIZE; i++) {
-        for (int j = col; j < col + 2 && j < GRID_SIZE; j++) {
-            smokeBoard[i][j] = 1;  // Mark the area as obscured
+// Function to apply a smoke screen on a 2x2 area
+void applySmokeScreen(char board[GRID_SIZE][GRID_SIZE], int row, int col) {
+    if (row >= 0 && row < GRID_SIZE - 1 && col >= 0 && col < GRID_SIZE - 1) {
+        for (int i = row; i <= row + 1; i++) {
+            for (int j = col; j <= col + 1; j++) {
+                radar[i][j] = 'S';  // Mark the radar grid as smoked
+            }
         }
+        clearScreen();
+        printf("Smoke screen applied at %d%c\n", row + 1, 'A' + col);
+    } else {
+        printf("Invalid smoke screen coordinates. Try again.\n");
     }
-    printf("Smoke screen deployed.\n");
-    return 1;  // Success
+}
+
+// Function to clear the screen for secrecy
+void clearScreen() {
+    printf("\033[H\033[J");  // Clear screen using ANSI escape code
 }
 
 // Function to check if all ships have been sunk
