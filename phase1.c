@@ -1,20 +1,16 @@
 // Improvements to add:
-// 1. everytime a player uses smoke, remind player how many smoke they have left
-// 2. everytime a player sinks a ship, remind player how much smoke they have left
-// 3. add condition in smoke if a player attempts to perform more than their allowed limit, they lose their turn.
 // 3. fix delay in terminal (when smoke is used, it takes a bit more time than other moves to move to next player's turn)
-// 4. fix terminal from clearing so fast after player is done placing all ships, so player has time to see final placement of their ships on board.
-// 5. add Torpedo function
 
 // easy mode: player loses turn if input invalid coordinates (done), hits and misses are shown on screen (done), player is warned when repeated coordinates are fired at and gets to change coordinates (done), smoke count tracked.
 // hard mode: player loses turn if input invalid coordinates (done), only hits are displayed (done), player is not warned when firing at the same coordinate (done), player is not reminded how much smoke they have (idea in progress).
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>   //Needed for random number generation
-#include <string.h> //In order to use strcmp()
-#include <ctype.h>  // included to provide functions for character handling
-#include <unistd.h> // For sleep function on Unix-based systems
+#include <time.h>    //Needed for random number generation
+#include <string.h>  //In order to use strcmp()
+#include <ctype.h>   // included to provide functions for character handling
+#include <unistd.h>  // For sleep function on Unix-based systems
+#include <stdbool.h> // For boolean data type
 
 #define GRID_SIZE 10
 
@@ -33,10 +29,11 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipNa
 void clearInputBuffer();                                                                                                                       // Function to clear the input buffer safely
 int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *artilleryAllowed, int *artilleryUnlocked, int *shipsSunk, int showMisses); // Fire at a specific coordinate // Modified function signature
 int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE], int row, int col);                                          // Function prototype for radar sweep with smokeBoard
-int artilleryStrike(char board[GRID_SIZE][GRID_SIZE], int row, int col);                                                                       // Artillery strike
+int artilleryStrike(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk);
+void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target);
 
 // Smoke Screen Functionality
-void applySmokeScreen(char radar[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int *smokeUsed);
+void applySmokeScreen(char radar[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int *smokeUsed, int *lostTurn);
 void clearScreen();
 
 int checkWin(char board[GRID_SIZE][GRID_SIZE]);
@@ -87,6 +84,7 @@ int main()
     placeShip(player1Board, 4, "Battleship", player1, 'B');
     placeShip(player1Board, 3, "Destroyer", player1, 'D');
     placeShip(player1Board, 2, "Submarine", player1, 'S');
+    sleep(2);      // Allow time to view final ship placement
     clearScreen(); // for secrecy
 
     // Player 2 places ships
@@ -95,22 +93,47 @@ int main()
     placeShip(player2Board, 4, "Battleship", player2, 'B');
     placeShip(player2Board, 3, "Destroyer", player2, 'D');
     placeShip(player2Board, 2, "Submarine", player2, 'S');
+    sleep(2); // Allow time to view final ship placement
     clearScreen();
 
     // Turn-based play
     int gameOver = 0;
     int currentPlayer = firstPlayer;
+    int lostTurn = 0; // Flag to track if the player lost their turn
 
     // Main game loop
     while (!gameOver)
     {
         clearScreen();
+        // Display the number of ships each player has sunk
+        printf("Player 1 (%s) - Ships sunk: %d\n", player1, player1ShipsSunk);
+        printf("Player 2 (%s) - Ships sunk: %d\n\n", player2, player2ShipsSunk);
+
+        // Display remaining smoke count in easy mode
+        if (showMisses == 1)
+        {
+            int remainingSmoke;
+            if (currentPlayer == 0)
+            {
+                remainingSmoke = player1ShipsSunk - player1SmokeUsed;
+                printf("Player 1, you have %d smoke(s) left.\n", remainingSmoke);
+            }
+            else
+            {
+                remainingSmoke = player2ShipsSunk - player2SmokeUsed;
+                printf("Player 2, you have %d smoke(s) left.\n", remainingSmoke);
+            }
+        }
+        else
+        {
+            printf("Hard mode: Smoke count not displayed.\n");
+        }
         if (currentPlayer == 0)
         {
             // Player 1's turn
             printf("\n%s's turn to play!\n", player1);
             displayBoard(player2Board, showMisses, 1);
-            printf("Available moves: Fire, Radar");
+            printf("Available moves: Fire, Radar, Torpedo");
 
             if (player1ArtilleryAllowed)
                 printf(", Artillery");
@@ -122,9 +145,11 @@ int main()
             while (!validMove)
             {
                 char command[10];
-                printf("Enter 'fire', 'radar', 'artillery', or 'smoke': ");
+                printf("Enter 'fire', 'radar', 'artillery', 'torpedo', or 'smoke': ");
                 scanf("%9s", command);
                 clearInputBuffer();
+
+                lostTurn = 0; // Reset lostTurn flag before each action
 
                 if (strcmp(command, "fire") == 0)
                 {
@@ -156,6 +181,7 @@ int main()
                                 {
                                     printf("\n%s wins!\n", player1);
                                     gameOver = 1;
+                                    break;
                                 }
                             }
                             else if (fireResult == -1 && showMisses == 1)
@@ -169,6 +195,22 @@ int main()
                         printf("Invalid input. Try again.\n");
                         clearInputBuffer();
                     }
+                }
+                else if (strcmp(command, "torpedo") == 0)
+                {
+                    // Torpedo attack logic
+                    char target;
+                    printf("Enter a column (A-J) or row (1-10) for torpedo attack: ");
+                    scanf(" %c", &target);
+                    clearInputBuffer();
+                    torpedoAttack(player2Board, target);
+                    if (checkWin(player2Board))
+                    {
+                        printf("\n%s wins!\n", player1);
+                        gameOver = 1;
+                        break;
+                    }
+                    validMove = 1;
                 }
                 else if (strcmp(command, "radar") == 0)
                 {
@@ -211,7 +253,13 @@ int main()
                             clearInputBuffer();
                             col = toupper(col) - 'A';
                             row--;
-                            artilleryStrike(player2Board, row, col);
+                            artilleryStrike(player2Board, row, col, &player1ShipsSunk);
+                            if (checkWin(player2Board))
+                            {
+                                printf("\n%s wins!\n", player1);
+                                gameOver = 1;
+                                break;
+                            }
                             validMove = 1;
                         }
                         else
@@ -233,10 +281,6 @@ int main()
                     {
                         printf("Need to sink a ship to unlock smoke screen.\n");
                     }
-                    else if (player1SmokeUsed >= player1ShipsSunk)
-                    {
-                        printf("You are only allowed one smoke screen per ship sunk.\n");
-                    }
                     else
                     {
                         int row;
@@ -247,8 +291,17 @@ int main()
                             clearInputBuffer();
                             col = toupper(col) - 'A';
                             row--;
-                            applySmokeScreen(player1Radar, row, col, &player1ShipsSunk, &player1SmokeUsed);
-                            validMove = 1;
+                            applySmokeScreen(player1Radar, row, col, &player1ShipsSunk, &player1SmokeUsed, &lostTurn);
+
+                            if (lostTurn)
+                            {
+                                validMove = 1;
+                                break;
+                            }
+                            else
+                            {
+                                validMove = 1;
+                            }
                         }
                         else
                         {
@@ -262,16 +315,19 @@ int main()
                     printf("Invalid move. Try again.\n");
                 }
             }
+            if (gameOver)
+                break;
             sleep(2);
             currentPlayer = 1;
         }
         else
         {
 
-            // Player 2's turn (similar logic as Player 1)
+            // Player 2's turn
             printf("\n%s's turn to play!\n", player2);
             displayBoard(player1Board, showMisses, 1);
-            printf("Available moves: Fire, Radar");
+            printf("Available moves: Fire, Radar, Torpedo");
+
             if (player2ArtilleryAllowed)
                 printf(", Artillery");
             if (player2ShipsSunk > 0)
@@ -283,13 +339,15 @@ int main()
             {
 
                 char command[10];
-                printf("Enter 'fire', 'radar', 'artillery', or 'smoke': ");
+                printf("Enter 'fire', 'radar', 'artillery', 'torpedo', or 'smoke': ");
                 scanf("%9s", command);
                 clearInputBuffer();
 
+                lostTurn = 0; // Reset lostTurn flag before each action
+
                 if (strcmp(command, "fire") == 0)
                 {
-                    // Fire command logic
+                    // Fire command logic for Player 2
                     int row;
                     char col;
                     printf("Enter coordinates to fire (row column, e.g., 3 B): ");
@@ -316,6 +374,7 @@ int main()
                                 {
                                     printf("\n%s wins!\n", player2);
                                     gameOver = 1;
+                                    break;
                                 }
                             }
                             else if (fireResult == -1 && showMisses == 1)
@@ -329,6 +388,22 @@ int main()
                         printf("Invalid input. Try again.\n");
                         clearInputBuffer();
                     }
+                }
+                else if (strcmp(command, "torpedo") == 0)
+                {
+                    // Torpedo attack logic for Player 2
+                    char target;
+                    printf("Enter a column (A-J) or row (1-10) for torpedo attack: ");
+                    scanf(" %c", &target);
+                    clearInputBuffer();
+                    torpedoAttack(player1Board, target);
+                    if (checkWin(player1Board))
+                    {
+                        printf("\n%s wins!\n", player2);
+                        gameOver = 1;
+                        break;
+                    }
+                    validMove = 1;
                 }
                 else if (strcmp(command, "radar") == 0)
                 {
@@ -371,7 +446,13 @@ int main()
                             clearInputBuffer();
                             col = toupper(col) - 'A';
                             row--;
-                            artilleryStrike(player1Board, row, col);
+                            artilleryStrike(player1Board, row, col, &player2ShipsSunk);
+                            if (checkWin(player1Board))
+                            {
+                                printf("\n%s wins!\n", player2);
+                                gameOver = 1;
+                                break;
+                            }
                             validMove = 1;
                         }
                         else
@@ -393,10 +474,6 @@ int main()
                     {
                         printf("Need to sink a ship to unlock smoke screen.\n");
                     }
-                    else if (player2SmokeUsed >= player2ShipsSunk)
-                    {
-                        printf("You are only allowed one smoke screen per ship sunk.\n");
-                    }
                     else
                     {
                         int row;
@@ -407,8 +484,17 @@ int main()
                             clearInputBuffer();
                             col = toupper(col) - 'A';
                             row--;
-                            applySmokeScreen(player2Radar, row, col, &player2ShipsSunk, &player2SmokeUsed);
-                            validMove = 1;
+                            applySmokeScreen(player2Radar, row, col, &player2ShipsSunk, &player2SmokeUsed, &lostTurn);
+
+                            if (lostTurn)
+                            {
+                                validMove = 1;
+                                break;
+                            }
+                            else
+                            {
+                                validMove = 1;
+                            }
                         }
                         else
                         {
@@ -422,6 +508,8 @@ int main()
                     printf("Invalid move. Try again.\n");
                 }
             }
+            if (gameOver)
+                break;
             sleep(2);
             currentPlayer = 0;
         }
@@ -671,16 +759,17 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *artilleryAll
         if (sunkShip != NULL)
         {
             printf("You sunk the %s!\n", sunkShip);
-            printf("Allowed 1 smoke screen.\n");
+            (*shipsSunk)++;
+            printf("Ships sunk by this player: %d\n", *shipsSunk);
 
             if (!*artilleryUnlocked)
             {
                 printf("Artillery unlocked!\n");
                 *artilleryUnlocked = 1;
             }
-            (*shipsSunk)++; // Increment sunk ship count
-            *artilleryAllowed = 1;
         }
+
+        *artilleryAllowed = 1;
     }
 
     return 1; // Successful fire
@@ -749,11 +838,13 @@ int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE
 }
 
 // Function to apply a smoke screen on a 2x2 area with limit check
-void applySmokeScreen(char radar[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int *smokeUsed)
+void applySmokeScreen(char radar[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int *smokeUsed, int *lostTurn)
 {
     if (*smokeUsed >= *shipsSunk)
     {
         printf("You are only allowed one smoke screen per ship sunk.\n");
+        printf("You have lost your turn!\n");
+        *lostTurn = 1;
         return;
     }
 
@@ -792,15 +883,14 @@ void clearScreen()
 }
 
 // Function to perform an artillery strike in a 2x2 area
-int artilleryStrike(char board[GRID_SIZE][GRID_SIZE], int row, int col)
+int artilleryStrike(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk)
 {
-    char hitShips[4] = {'\0', '\0', '\0', '\0'}; // Array to store ship characters hit
+    char hitShips[4] = {'\0', '\0', '\0', '\0'};
     int index = 0;
-    int alreadySunk[256] = {0}; // Array to keep track of ships already checked for sinking
+    int alreadySunk[256] = {0};
 
     printf("Performing artillery strike at %d %c!\n", row + 1, col + 'A');
 
-    // Hit all cells in the 2x2 area
     for (int i = row; i < row + 2 && i < GRID_SIZE; i++)
     {
         for (int j = col; j < col + 2 && j < GRID_SIZE; j++)
@@ -808,32 +898,83 @@ int artilleryStrike(char board[GRID_SIZE][GRID_SIZE], int row, int col)
             if (board[i][j] == '~')
             {
                 printf("Miss at %d %c.\n", i + 1, j + 'A');
-                board[i][j] = 'o'; // Mark miss
+                board[i][j] = 'o';
             }
             else if (board[i][j] != '*' && board[i][j] != 'o')
             {
                 printf("Hit at %d %c!\n", i + 1, j + 'A');
-                hitShips[index++] = board[i][j]; // Store the hit ship character
-                board[i][j] = '*';               // Mark hit
+                hitShips[index++] = board[i][j];
+                board[i][j] = '*';
             }
         }
     }
 
-    // Check if any ship is fully sunk, ensuring each ship is checked only once
     for (int i = 0; i < index; i++)
     {
         if (!alreadySunk[(unsigned char)hitShips[i]])
-        { // Check if the ship was already checked
+        {
             const char *sunkShip = checkShipSunk(board, hitShips[i]);
             if (sunkShip != NULL)
             {
                 printf("You sunk the %s!\n", sunkShip);
-                alreadySunk[(unsigned char)hitShips[i]] = 1; // Mark this ship as checked
+                alreadySunk[(unsigned char)hitShips[i]] = 1;
+                (*shipsSunk)++;
             }
         }
     }
 
     return 1;
+}
+
+// Function to perform a torpedo attack targeting a row or column
+void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target)
+{
+    int index;
+    bool hit = false;
+
+    if (target >= 'A' && target <= 'J')
+    { // Column attack
+        index = target - 'A';
+        for (int i = 0; i < GRID_SIZE; i++)
+        {
+            if (board[i][index] != '~' && board[i][index] != '*' && board[i][index] != 'o')
+            {
+                printf("Hit at row %d, column %c\n", i + 1, target);
+                board[i][index] = '*'; // Mark the hit
+                hit = true;
+            }
+        }
+    }
+    else if (target >= '1' && target <= '9')
+    { // Row attack
+        index = target - '1';
+        for (int i = 0; i < GRID_SIZE; i++)
+        {
+            if (board[index][i] != '~' && board[index][i] != '*' && board[index][i] != 'o')
+            {
+                printf("Hit at row %d, column %d\n", index + 1, i + 1);
+                board[index][i] = '*';
+                hit = true;
+            }
+        }
+    }
+    else if (target == '0')
+    { // Row attack for row 10
+        index = 9;
+        for (int i = 0; i < GRID_SIZE; i++)
+        {
+            if (board[index][i] != '~' && board[index][i] != '*' && board[index][i] != 'o')
+            {
+                printf("Hit at row %d, column %d\n", index + 1, i + 1);
+                board[index][i] = '*';
+                hit = true;
+            }
+        }
+    }
+    if (!hit)
+    {
+        printf("Miss\n");
+    }
 }
 
 // Function to check if all ships have been sunk
