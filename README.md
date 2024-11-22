@@ -1,12 +1,14 @@
 # MD-404
 CMPS 270 - BATTLESHIP 
 
-Game Structure
+**Game Structure**
 
-Game Setup
+**Game Setup**
 
 Players: A human player and a bot.
+
 Boards: Each player has a 10x10 board with ships placed strategically.
+
 Ships:
          1 Carrier (5 cells)
          1 Battleship (4 cells)
