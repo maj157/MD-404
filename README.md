@@ -16,3 +16,6 @@ Ships:
          1 Submarine (2 cells)
          
 Objective: Sink all opponent ships.
+
+**Phase 1: 2 player Battleship** 
+
