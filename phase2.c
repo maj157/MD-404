@@ -647,8 +647,6 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
     megaBotShots[row][col] = 1;
 }
 
-
-
 int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRID_SIZE][GRID_SIZE],
                          char playerRadar[GRID_SIZE][GRID_SIZE],
                          int *shipsSunk, int *smokeUsed, int *radarCount, int showMisses, int *gameOver)
