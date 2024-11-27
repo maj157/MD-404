@@ -1,7 +1,7 @@
 void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE])
 {
-const int shipSizes[] = {5, 4, 3, 2};
-const char shipChars[] = {'C', 'B', 'D', 'S'};
+    const int shipSizes[] = {5, 4, 3, 2};
+    const char shipChars[] = {'C', 'B', 'D', 'S'};
 
     for (int i = 0; i < 4; i++)
     {
@@ -67,63 +67,62 @@ const char shipChars[] = {'C', 'B', 'D', 'S'};
             }
         }
     }
-
 }
 
 int getUnvisitedNeighbors(int row, int col, int neighbors[4][2])
 {
-int count = 0;
-for (int i = 0; i < 4; i++)
-{
-int newRow = row + directions[i][0];
-int newCol = col + directions[i][1];
-if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
-{
-neighbors[count][0] = newRow;
-neighbors[count][1] = newCol;
-count++;
-}
-}
-return count;
+    int count = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        int newRow = row + directions[i][0];
+        int newCol = col + directions[i][1];
+        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
+        {
+            neighbors[count][0] = newRow;
+            neighbors[count][1] = newCol;
+            count++;
+        }
+    }
+    return count;
 }
 
 void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE])
 {
-for (int i = row; i <= row + 1; i++)
-{
-for (int j = col; j <= col + 1; j++)
-{
-if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
-{
-megaBotShots[i][j] = 1; // Mark cell as visited
-}
-}
-}
+    for (int i = row; i <= row + 1; i++)
+    {
+        for (int j = col; j <= col + 1; j++)
+        {
+            if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
+            {
+                megaBotShots[i][j] = 1; // Mark cell as visited
+            }
+        }
+    }
 }
 
 int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE])
 {
-for (int i = row; i <= row + 1; i++)
-{
-for (int j = col; j <= col + 1; j++)
-{
-if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
-{
-if (megaBotShots[i][j] == 1) // Any cell in the block is visited
-return 0; // Invalid target
-}
-}
-}
-return 1; // All cells in the block are unvisited
+    for (int i = row; i <= row + 1; i++)
+    {
+        for (int j = col; j <= col + 1; j++)
+        {
+            if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
+            {
+                if (megaBotShots[i][j] == 1) // Any cell in the block is visited
+                    return 0;                // Invalid target
+            }
+        }
+    }
+    return 1; // All cells in the block are unvisited
 }
 
 void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver)
 {
-static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
-static int artilleryUnlocked = 0; // Flag to track artillery availability
-static int torpedoUnlocked = 0; // Flag to track torpedo availability
-int neighbors[4][2];
-int foundTarget = 0;
+    static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
+    static int artilleryUnlocked = 0;            // Flag to track artillery availability
+    static int torpedoUnlocked = 0;              // Flag to track torpedo availability
+    int neighbors[4][2];
+    int foundTarget = 0;
 
     if (*shipsSunk >= 3)
         torpedoUnlocked = 1; // Unlock torpedo after sinking 3 ships
@@ -298,5 +297,4 @@ int foundTarget = 0;
         *gameOver = 1;
     }
     megaBotShots[row][col] = 1;
-
 }
