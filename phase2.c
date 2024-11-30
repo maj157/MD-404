@@ -58,13 +58,13 @@ void placeFleet(char board[GRID_SIZE][GRID_SIZE], const char *playerName);
 int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipName, const char *playerName, char shipInitial);
 
 void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE]);
+int getUnvisitedNeighbors(int row, int col, int neighbors[4][2]);
+void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE]);
+int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE]);
 int processArtilleryHits(int row, int col, char opponentBoard[GRID_SIZE][GRID_SIZE], int artilleryHits[4][2]);
 void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver);
 int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver, int *lastHitRow, int *lastHitCol, int *direction);
 void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver);
-int getUnvisitedNeighbors(int row, int col, int neighbors[4][2]);
-void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE]);
-int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE]);
 
 int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRID_SIZE][GRID_SIZE], char playerRadar[GRID_SIZE][GRID_SIZE],
                          int *shipsSunk, int *smokeUsed, int *radarCount, int showMisses, int *gameOver);
