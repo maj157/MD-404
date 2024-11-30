@@ -60,6 +60,7 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipNa
 void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE]);
 int processArtilleryHits(int row, int col, char opponentBoard[GRID_SIZE][GRID_SIZE], int artilleryHits[4][2]);
 void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver);
+int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver, int *lastHitRow, int *lastHitCol, int *direction);
 void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver);
 int getUnvisitedNeighbors(int row, int col, int neighbors[4][2]);
 void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE]);
@@ -221,7 +222,7 @@ int askDifficulty()
         printf("Invalid input. Defaulting to hard mode.\n");
         difficulty = 2;
     }
-    clearInputBuffer();               
+    clearInputBuffer();
     return (difficulty == 1) ? 1 : 0; // Return 1 for easy, 0 for hard
 }
 
@@ -464,7 +465,7 @@ void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE
         {
             if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
             {
-                megaBotShots[i][j] = 1; 
+                megaBotShots[i][j] = 1;
             }
         }
     }
@@ -479,11 +480,11 @@ int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SI
             if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
             {
                 if (megaBotShots[i][j] == 1) // Any cell in the block is visited
-                    return 0;                
+                    return 0;
             }
         }
     }
-    return 1; 
+    return 1;
 }
 
 int processArtilleryHits(int row, int col, char opponentBoard[GRID_SIZE][GRID_SIZE], int artilleryHits[4][2])
@@ -528,8 +529,8 @@ void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_
         if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE &&
             opponentBoard[newRow][newCol] != 'o' && opponentBoard[newRow][newCol] != '*')
         {
-            
-            int result = fireAt(opponentBoard, newRow, newCol, shipsSunk, 0); 
+
+            int result = fireAt(opponentBoard, newRow, newCol, shipsSunk, 0);
 
             if (result == 1) // Successful fire
             {
@@ -539,10 +540,70 @@ void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_
                     *gameOver = 1;
                     return;
                 }
-                return; 
+                return;
             }
         }
     }
+}
+
+int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver, int *lastHitRow, int *lastHitCol, int *direction)
+{
+    for (int i = 0; i < GRID_SIZE; i++)
+    {
+        for (int j = (i % 2); j < GRID_SIZE; j += 2)
+        {
+            if (megaBotShots[i][j] == 0) // Check unvisited cells
+            {
+                printf("megaBot fires at %d%c\n", i + 1, 'A' + j);
+                if (opponentBoard[i][j] != '~') // Hit
+                {
+                    printf("Hit!\n");
+                    char shipChar = opponentBoard[i][j];
+                    opponentBoard[i][j] = '*';
+                    *lastHitRow = i;
+                    *lastHitCol = j;
+
+                    // Determine next direction for focused sinking
+                    if (i > 0 && megaBotShots[i - 1][j] == 0)
+                        *direction = 0; // Up
+                    else if (i < GRID_SIZE - 1 && megaBotShots[i + 1][j] == 0)
+                        *direction = 1; // Down
+                    else if (j > 0 && megaBotShots[i][j - 1] == 0)
+                        *direction = 2; // Left
+                    else if (j < GRID_SIZE - 1 && megaBotShots[i][j + 1] == 0)
+                        *direction = 3; // Right
+
+                    // Check if a ship was sunk
+                    const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
+                    if (sunkShip != NULL)
+                    {
+                        printf("megaBot sunk the %s!\n", sunkShip);
+                        (*shipsSunk)++;
+                        *lastHitRow = -1; // Reset for new ship
+                        *lastHitCol = -1;
+                        *direction = -1;
+                    }
+                }
+                else // Miss
+                {
+                    printf("Miss!\n");
+                    opponentBoard[i][j] = 'o';
+                }
+
+                // Check if the game is over
+                if (checkWin(opponentBoard))
+                {
+                    printf("megaBot wins!\n");
+                    *gameOver = 1;
+                    return 1; // Signal that a move was made
+                }
+
+                megaBotShots[i][j] = 1; // Mark as visited
+                return 1; // Signal that a move was made
+            }
+        }
+    }
+    return 0; // No move made
 }
 
 
@@ -550,9 +611,9 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
 {
     static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
     static int direction = -1;                   // Track the current direction: 0 = up, 1 = down, 2 = left, 3 = right
-    static int artilleryUnlocked = 0;            
-    static int torpedoUnlocked = 0;              
-    static int torpedoedRows[GRID_SIZE] = {0};   // Track rows targeted by torpedo (0 = not targeted, 1 = targeted)
+    static int artilleryUnlocked = 0;
+    static int torpedoUnlocked = 0;
+    static int torpedoedRows[GRID_SIZE] = {0}; // Track rows targeted by torpedo (0 = not targeted, 1 = targeted)
 
     if (*shipsSunk >= 3)
         torpedoUnlocked = 1; // Unlock torpedo after sinking 3 ships
@@ -566,10 +627,9 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
         int row = nextTarget.row;
         int col = nextTarget.col;
 
-        // Skip already-hit or invalid cells
         if (opponentBoard[row][col] == '*' || opponentBoard[row][col] == 'o')
         {
-            return; 
+            return;
         }
 
         // Fire at this neighbor
@@ -588,11 +648,11 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
                 if (row > 0 && megaBotShots[row - 1][col] == 0)
                     direction = 0;
                 else if (row < GRID_SIZE - 1 && megaBotShots[row + 1][col] == 0)
-                    direction = 1; 
+                    direction = 1;
                 else if (col > 0 && megaBotShots[row][col - 1] == 0)
-                    direction = 2; 
+                    direction = 2;
                 else if (col < GRID_SIZE - 1 && megaBotShots[row][col + 1] == 0)
-                    direction = 3; 
+                    direction = 3;
             }
 
             const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
@@ -623,21 +683,21 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
     // Priority 2: Use Torpedo if Unlocked and Queue is Empty
     if (torpedoUnlocked)
     {
-        for (int row = 0; row < GRID_SIZE; row++) 
+        for (int row = 0; row < GRID_SIZE; row++)
         {
-            if (torpedoedRows[row] == 0) 
+            if (torpedoedRows[row] == 0)
             {
                 printf("megaBot uses torpedo on row %d\n", row + 1);
-                torpedoAttack(opponentBoard, '1' + row); 
-                torpedoedRows[row] = 1;                 
+                torpedoAttack(opponentBoard, '1' + row);
+                torpedoedRows[row] = 1;
 
-                if (checkWin(opponentBoard)) 
+                if (checkWin(opponentBoard))
                 {
                     printf("megaBot wins!\n");
                     *gameOver = 1;
-                    return; 
+                    return;
                 }
-                return; 
+                return;
             }
         }
     }
@@ -649,13 +709,13 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
 
         // Determine next cell based on direction
         if (direction == 0)
-            newRow--; 
+            newRow--;
         else if (direction == 1)
-            newRow++; 
+            newRow++;
         else if (direction == 2)
-            newCol--; 
+            newCol--;
         else if (direction == 3)
-            newCol++; 
+            newCol++;
 
         if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
         {
@@ -676,14 +736,14 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
                     (*shipsSunk)++;
                     lastHitRow = -1;
                     lastHitCol = -1;
-                    direction = -1; 
+                    direction = -1;
                 }
             }
             else
             {
                 printf("Miss!\n");
                 opponentBoard[newRow][newCol] = 'o';
-                direction = -1; 
+                direction = -1;
             }
 
             if (checkWin(opponentBoard))
@@ -738,63 +798,15 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
                             }
                         }
                     }
-                    return; 
+                    return;
                 }
             }
         }
     }
-
     // Priority 5: Checkerboard Firing (Default Search)
-    for (int i = 0; i < GRID_SIZE; i++)
-    {
-        for (int j = (i % 2); j < GRID_SIZE; j += 2)
-        {
-            if (megaBotShots[i][j] == 0)
-            {
-                printf("megaBot fires at %d%c\n", i + 1, 'A' + j);
-                if (opponentBoard[i][j] != '~')
-                {
-                    printf("Hit!\n");
-                    char shipChar = opponentBoard[i][j];
-                    opponentBoard[i][j] = '*';
-                    lastHitRow = i;
-                    lastHitCol = j;
+    if (checkerboard(opponentBoard, megaBotShots, shipsSunk, gameOver, &lastHitRow, &lastHitCol, &direction))
+        return; 
 
-                    if (i > 0 && megaBotShots[i - 1][j] == 0)
-                        direction = 0;
-                    else if (i < GRID_SIZE - 1 && megaBotShots[i + 1][j] == 0)
-                        direction = 1;
-                    else if (j > 0 && megaBotShots[i][j - 1] == 0)
-                        direction = 2;
-                    else if (j < GRID_SIZE - 1 && megaBotShots[i][j + 1] == 0)
-                        direction = 3;
-
-                    const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
-                    if (sunkShip != NULL)
-                    {
-                        printf("megaBot sunk the %s!\n", sunkShip);
-                        (*shipsSunk)++;
-                        lastHitRow = -1;
-                        lastHitCol = -1;
-                        direction = -1;
-                    }
-                }
-                else
-                {
-                    printf("Miss!\n");
-                    opponentBoard[i][j] = 'o';
-                }
-
-                if (checkWin(opponentBoard))
-                {
-                    printf("megaBot wins!\n");
-                    *gameOver = 1;
-                }
-                megaBotShots[i][j] = 1;
-                return;
-            }
-        }
-    }
 }
 
 int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRID_SIZE][GRID_SIZE],
@@ -1064,7 +1076,7 @@ void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShip
             }
             else if (board[i][j] == 'o' && !showMisses)
             {
-                printf("~ "); 
+                printf("~ ");
             }
             else
             {
@@ -1079,7 +1091,7 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, i
 {
     if ((board[row][col] == '*' || board[row][col] == 'o') && showMisses == 1)
     {
-        return -1; 
+        return -1;
     }
 
     if (board[row][col] == '~')
@@ -1106,7 +1118,7 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, i
         }
     }
 
-    return 1; 
+    return 1;
 }
 
 int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE], int row, int col, int player)
@@ -1193,7 +1205,7 @@ void applySmokeScreen(char opponentRadar[GRID_SIZE][GRID_SIZE], int row, int col
 void displaySmokeCount(int showMisses, int currentPlayer, int player1ShipsSunk, int player2ShipsSunk, int player1SmokeUsed, int player2SmokeUsed)
 {
     if (showMisses == 1)
-    { // Easy mode
+    { 
         int remainingSmoke = (currentPlayer == 0)
                                  ? player1ShipsSunk - player1SmokeUsed
                                  : player2ShipsSunk - player2SmokeUsed;
@@ -1261,15 +1273,15 @@ void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target)
         {
             if (board[i][index] != '*' && board[i][index] != 'o')
             {
-                if (board[i][index] != '~') 
+                if (board[i][index] != '~')
                 {
                     printf("Hit at row %d, column %c\n", i + 1, target);
-                    board[i][index] = '*'; 
+                    board[i][index] = '*';
                     hit = true;
                 }
-                else 
+                else
                 {
-                    board[i][index] = 'o'; 
+                    board[i][index] = 'o';
                 }
             }
         }
@@ -1281,15 +1293,15 @@ void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target)
         {
             if (board[index][i] != '*' && board[index][i] != 'o')
             {
-                if (board[index][i] != '~') 
+                if (board[index][i] != '~')
                 {
                     printf("Hit at row %d, column %c\n", index + 1, 'A' + i);
-                    board[index][i] = '*'; 
+                    board[index][i] = '*';
                     hit = true;
                 }
-                else 
+                else
                 {
-                    board[index][i] = 'o'; 
+                    board[index][i] = 'o';
                 }
             }
         }
@@ -1297,7 +1309,7 @@ void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target)
 
     if (!hit)
     {
-        printf("Miss\n"); 
+        printf("Miss\n");
     }
 }
 
@@ -1338,7 +1350,7 @@ int checkWin(char board[GRID_SIZE][GRID_SIZE])
             // Check if any ships remain on the board
             if (board[i][j] != '~' && board[i][j] != '*' && board[i][j] != 'o')
             {
-                return 0; // Game is not over
+                return 0; 
             }
         }
     }
