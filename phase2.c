@@ -17,6 +17,34 @@ char megaBotRadar[GRID_SIZE][GRID_SIZE];
 int megaBotShots[GRID_SIZE][GRID_SIZE];
 int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
+typedef struct
+{
+    int row;
+    int col;
+} Cell;
+
+Cell neighborQueue[GRID_SIZE * GRID_SIZE];
+int neighborQueueStart = 0, neighborQueueEnd = 0;
+
+void enqueueNeighbor(int row, int col)
+{
+    neighborQueue[neighborQueueEnd].row = row;
+    neighborQueue[neighborQueueEnd].col = col;
+    neighborQueueEnd++;
+}
+
+Cell dequeueNeighbor()
+{
+    Cell cell = neighborQueue[neighborQueueStart];
+    neighborQueueStart++;
+    return cell;
+}
+
+int isNeighborQueueEmpty()
+{
+    return neighborQueueStart == neighborQueueEnd;
+}
+
 void initializeGame(char player1Board[GRID_SIZE][GRID_SIZE], char botBoard[GRID_SIZE][GRID_SIZE],
                     char player1Radar[GRID_SIZE][GRID_SIZE], char megaBotRadar[GRID_SIZE][GRID_SIZE]);
 void initializeBoard(char board[GRID_SIZE][GRID_SIZE]);
@@ -30,17 +58,19 @@ void placeFleet(char board[GRID_SIZE][GRID_SIZE], const char *playerName);
 int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipName, const char *playerName, char shipInitial);
 
 void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE]);
-void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver);
 int getUnvisitedNeighbors(int row, int col, int neighbors[4][2]);
 void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE]);
 int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE]);
+int processArtilleryHits(int row, int col, char opponentBoard[GRID_SIZE][GRID_SIZE], int artilleryHits[4][2]);
+void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver);
+int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver, int *lastHitRow, int *lastHitCol, int *direction);
+void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver);
 
 int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRID_SIZE][GRID_SIZE], char playerRadar[GRID_SIZE][GRID_SIZE],
                          int *shipsSunk, int *smokeUsed, int *radarCount, int showMisses, int *gameOver);
 void displayTurnInfo(const char *playerName, char opponentBoard[GRID_SIZE][GRID_SIZE], int showMisses, int shipsSunk);
 int getCommandCode(const char *command);
 void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShips);
-
 
 int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int showMisses);
 int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE], int row, int col, int player);
@@ -54,7 +84,7 @@ int checkWin(char board[GRID_SIZE][GRID_SIZE]);
 
 int main()
 {
-    
+
     char player1Board[GRID_SIZE][GRID_SIZE];
     char botBoard[GRID_SIZE][GRID_SIZE];
     char player1[50] = "Player 1";
@@ -62,25 +92,20 @@ int main()
     int botShipsSunk = 0, player1ShipsSunk = 0;
     int player1SmokeUsed = 0;
 
-    srand(time(NULL)); 
+    srand(time(NULL));
 
-    
     initializeGame(player1Board, botBoard, player1Radar, megaBotRadar);
-    initializeSmokeEffectGrid(); 
+    initializeSmokeEffectGrid();
 
     int showMisses = askDifficulty();
 
-    // Player 1 places ships
     placeFleet(player1Board, player1);
 
-    // megaBot places ships
     printf("MegaBot is placing its fleet...\n");
     megaBotPlaceShips(botBoard);
 
-    
     int firstPlayer = rand() % 2;
 
-  
     int gameOver = 0;
     int currentPlayer = firstPlayer;
 
@@ -89,7 +114,6 @@ int main()
     {
         clearScreen();
 
-        
         printf("Player 1 (%s) - Ships sunk: %d\n", player1, player1ShipsSunk);
         printf("megaBot - Ships sunk: %d\n\n", botShipsSunk);
 
@@ -97,7 +121,7 @@ int main()
 
         if (currentPlayer == 0)
         {
-            
+
             printf("\nYour current grid:\n");
             displayBoard(player1Board, showMisses, 0);
 
@@ -117,7 +141,7 @@ int main()
         }
         else
         {
-            
+
             printf("megaBot's turn to play...\n");
             megaBotMakeMove(player1Board, &botShipsSunk, &gameOver);
 
@@ -134,11 +158,10 @@ int main()
 void initializeGame(char player1Board[GRID_SIZE][GRID_SIZE], char botBoard[GRID_SIZE][GRID_SIZE],
                     char player1Radar[GRID_SIZE][GRID_SIZE], char megaBotRadar[GRID_SIZE][GRID_SIZE])
 {
-    
+
     initializeBoard(player1Board);
     initializeBoard(botBoard);
 
-    
     initializeRadar(player1Radar);
     initializeRadar(megaBotRadar);
 
@@ -158,7 +181,7 @@ void initializeBoard(char board[GRID_SIZE][GRID_SIZE])
     {
         for (int j = 0; j < GRID_SIZE; j++)
         {
-            board[i][j] = '~'; 
+            board[i][j] = '~';
         }
     }
 }
@@ -181,7 +204,7 @@ void initializeSmokeEffectGrid()
         for (int j = 0; j < GRID_SIZE; j++)
         {
             player1SmokeEffectGrid[i][j] = 0; // Clear all smoke effects initially for Player
-            megaBotSmokeEffectGrid[i][j] = 0; 
+            megaBotSmokeEffectGrid[i][j] = 0;
         }
     }
 }
@@ -199,7 +222,7 @@ int askDifficulty()
         printf("Invalid input. Defaulting to hard mode.\n");
         difficulty = 2;
     }
-    clearInputBuffer();               // Clear input buffer after scanf
+    clearInputBuffer();
     return (difficulty == 1) ? 1 : 0; // Return 1 for easy, 0 for hard
 }
 
@@ -210,8 +233,8 @@ void clearScreen()
 #else
     system("clear"); // Clear screen on macOS/Linux
 #endif
-    printf("\033[H\033[J"); 
-    fflush(stdout);         
+    printf("\033[H\033[J");
+    fflush(stdout);
 }
 
 void clearInputBuffer()
@@ -228,19 +251,19 @@ void placeFleet(char board[GRID_SIZE][GRID_SIZE], const char *playerName)
     placeShip(board, 4, "Battleship", playerName, 'B');
     placeShip(board, 3, "Destroyer", playerName, 'D');
     placeShip(board, 2, "Submarine", playerName, 'S');
-    sleep(2);      
-    clearScreen(); 
+    sleep(2);
+    clearScreen();
 }
 
 int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipName, const char *playerName, char shipInitial)
 {
     int row;
-    char col;             
-    char orientation[20]; 
+    char col;
+    char orientation[20];
 
     while (1)
     {
-        
+
         printf("%s, placing your %s (size %d):\n", playerName, shipName, shipSize);
         printf("%s, enter starting position (row column, e.g., 3 B): ", playerName);
         if (scanf("%d %c", &row, &col) != 2)
@@ -249,22 +272,22 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipNa
             clearInputBuffer();
             continue;
         }
-        clearInputBuffer(); 
+        clearInputBuffer();
 
-        col = toupper(col) - 'A'; 
-        row--;                    
+        col = toupper(col) - 'A';
+        row--;
 
         int validPlacement = 1;
 
         if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE)
         {
             printf("Error: Invalid starting position for %s. Row or column out of bounds.\n", shipName);
-            continue; 
+            continue;
         }
 
         printf("Enter orientation (horizontal or vertical): ");
         scanf("%19s", orientation); // Limit input to avoid buffer overflow
-        clearInputBuffer();         
+        clearInputBuffer();
 
         for (int i = 0; orientation[i]; i++)
         {
@@ -339,8 +362,8 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipNa
                     board[row + i][col] = shipInitial;
                 }
             }
-            displayBoard(board, 1, 0); 
-            break;                     
+            displayBoard(board, 1, 0);
+            break;
         }
     }
     return 1;
@@ -351,7 +374,7 @@ void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE])
     const int shipSizes[] = {5, 4, 3, 2};
     const char shipChars[] = {'C', 'B', 'D', 'S'};
 
-    for (int i = 0; i < 4; i++) 
+    for (int i = 0; i < 4; i++)
     {
         int placed = 0;
         while (!placed)
@@ -417,14 +440,14 @@ void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE])
     }
 }
 
-int getUnvisitedNeighbors(int row, int col, int neighbors[4][2]) 
+int getUnvisitedNeighbors(int row, int col, int neighbors[4][2])
 {
     int count = 0;
-    for (int i = 0; i < 4; i++) 
+    for (int i = 0; i < 4; i++)
     {
         int newRow = row + directions[i][0];
         int newCol = col + directions[i][1];
-        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0) 
+        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
         {
             neighbors[count][0] = newRow;
             neighbors[count][1] = newCol;
@@ -442,7 +465,7 @@ void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE
         {
             if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
             {
-                megaBotShots[i][j] = 1; // Mark cell as visited
+                megaBotShots[i][j] = 1;
             }
         }
     }
@@ -457,143 +480,110 @@ int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SI
             if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
             {
                 if (megaBotShots[i][j] == 1) // Any cell in the block is visited
-                    return 0; // Invalid target
+                    return 0;
             }
         }
     }
-    return 1; // All cells in the block are unvisited
+    return 1;
 }
 
-void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver)
+int processArtilleryHits(int row, int col, char opponentBoard[GRID_SIZE][GRID_SIZE], int artilleryHits[4][2])
 {
-    static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
-    static int artilleryUnlocked = 0;           // Flag to track artillery availability
-    static int torpedoUnlocked = 0;             // Flag to track torpedo availability
-    int neighbors[4][2];
-    int foundTarget = 0;
-
-    if (*shipsSunk >= 3)
-        torpedoUnlocked = 1; // Unlock torpedo after sinking 3 ships
-    else if (*shipsSunk >= 1)
-        artilleryUnlocked = 1; // Unlock artillery after sinking 1 ship
-
-    // Priority 1: Use Torpedo if Unlocked
-    if (torpedoUnlocked)
+    int hitCount = 0;
+    for (int i = row; i <= row + 1; i++) // Check 2x2 block
     {
-        if (rand() % 2 == 0)
-        { // Row attack
-            int targetRow = rand() % GRID_SIZE;
-            printf("megaBot uses torpedo on row %d\n", targetRow + 1);
-            torpedoAttack(opponentBoard, '1' + targetRow);
-        }
-        else
-        { // Column attack
-            char targetCol = 'A' + (rand() % GRID_SIZE);
-            printf("megaBot uses torpedo on column %c\n", targetCol);
-            torpedoAttack(opponentBoard, targetCol);
-        }
-
-        // Check if the game is won
-        if (checkWin(opponentBoard))
+        for (int j = col; j <= col + 1; j++)
         {
-            printf("megaBot wins!\n");
-            *gameOver = 1;
+            if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
+            {
+                if (opponentBoard[i][j] != '~' && opponentBoard[i][j] != 'o')
+                {
+                    artilleryHits[hitCount][0] = i;
+                    artilleryHits[hitCount][1] = j;
+                    hitCount++;
+
+                    // **Only enqueue valid neighbors of unvisited hits**
+                    if (opponentBoard[i][j] != '*')
+                    {
+                        enqueueNeighbor(i, j);
+                    }
+                }
+            }
         }
-        return;
     }
 
-    // Priority 2: Use Artillery if Unlocked
-    if (artilleryUnlocked)
-    {
-        for (int row = 0; row < GRID_SIZE - 1; row++)
-        {
-            for (int col = 0; col < GRID_SIZE - 1; col++)
-            {
-                if (isArtilleryTargetValid(row, col, megaBotShots)) // Check if 2x2 block is valid
-                {
-                    printf("megaBot uses artillery at %d%c\n", row + 1, 'A' + col);
-                    artilleryStrike(opponentBoard, row, col, shipsSunk);
-                    markArtilleryImpact(row, col, megaBotShots); // Mark the 2x2 block as visited
+    return hitCount;
+}
 
-                    // Check if the game is won
-                    if (checkWin(opponentBoard))
-                    {
-                        printf("megaBot wins!\n");
-                        *gameOver = 1;
-                    }
+void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver)
+{
+    int row = hit->row;
+    int col = hit->col;
+    int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Up, Down, Left, Right
+
+    for (int d = 0; d < 4; d++)
+    {
+        int newRow = row + directions[d][0];
+        int newCol = col + directions[d][1];
+
+        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE &&
+            opponentBoard[newRow][newCol] != 'o' && opponentBoard[newRow][newCol] != '*')
+        {
+
+            int result = fireAt(opponentBoard, newRow, newCol, shipsSunk, 0);
+
+            if (result == 1) // Successful fire
+            {
+                if (checkWin(opponentBoard))
+                {
+                    printf("megaBot wins!\n");
+                    *gameOver = 1;
                     return;
                 }
+                return;
             }
         }
     }
+}
 
-    // Priority 3: Normal Fire
-    if (lastHitRow != -1 && lastHitCol != -1)
-    {
-        int neighborCount = getUnvisitedNeighbors(lastHitRow, lastHitCol, neighbors);
-        if (neighborCount > 0)
-        {
-            int targetIndex = rand() % neighborCount;
-            int row = neighbors[targetIndex][0];
-            int col = neighbors[targetIndex][1];
-
-            printf("megaBot fires at %d%c\n", row + 1, 'A' + col);
-            if (opponentBoard[row][col] != '~')
-            {
-                printf("Hit!\n");
-                char shipChar = opponentBoard[row][col];
-                opponentBoard[row][col] = '*';
-                lastHitRow = row;
-                lastHitCol = col;
-
-                const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
-                if (sunkShip != NULL)
-                {
-                    printf("megaBot sunk the %s!\n", sunkShip);
-                    (*shipsSunk)++;
-                }
-            }
-            else
-            {
-                printf("Miss!\n");
-                opponentBoard[row][col] = 'o';
-                lastHitRow = -1;
-                lastHitCol = -1;
-            }
-
-            if (checkWin(opponentBoard))
-            {
-                printf("megaBot wins!\n");
-                *gameOver = 1;
-            }
-            megaBotShots[row][col] = 1;
-            return;
-        }
-    }
-
-    for (int i = 0; i < GRID_SIZE && !foundTarget; i++)
+int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver, int *lastHitRow, int *lastHitCol, int *direction)
+{
+    for (int i = 0; i < GRID_SIZE; i++)
     {
         for (int j = (i % 2); j < GRID_SIZE; j += 2)
         {
-            if (megaBotShots[i][j] == 0)
+            if (megaBotShots[i][j] == 0) // Check unvisited cells
             {
                 printf("megaBot fires at %d%c\n", i + 1, 'A' + j);
-                if (opponentBoard[i][j] != '~')
+                if (opponentBoard[i][j] != '~') 
                 {
                     printf("Hit!\n");
                     char shipChar = opponentBoard[i][j];
                     opponentBoard[i][j] = '*';
-                    lastHitRow = i;
-                    lastHitCol = j;
+                    *lastHitRow = i;
+                    *lastHitCol = j;
+
+                    // Determine next direction for focused sinking
+                    if (i > 0 && megaBotShots[i - 1][j] == 0)
+                        *direction = 0;
+                    else if (i < GRID_SIZE - 1 && megaBotShots[i + 1][j] == 0)
+                        *direction = 1; 
+                    else if (j > 0 && megaBotShots[i][j - 1] == 0)
+                        *direction = 2; 
+                    else if (j < GRID_SIZE - 1 && megaBotShots[i][j + 1] == 0)
+                        *direction = 3; 
 
                     const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
                     if (sunkShip != NULL)
                     {
                         printf("megaBot sunk the %s!\n", sunkShip);
                         (*shipsSunk)++;
+                        *lastHitRow = -1; 
+                        *lastHitCol = -1;
+                        *direction = -1;
                     }
                 }
-                else
+                else 
                 {
                     printf("Miss!\n");
                     opponentBoard[i][j] = 'o';
@@ -603,48 +593,218 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
                 {
                     printf("megaBot wins!\n");
                     *gameOver = 1;
+                    return 1; 
                 }
-                megaBotShots[i][j] = 1;
+
+                megaBotShots[i][j] = 1; 
+                return 1; 
+            }
+        }
+    }
+    return 0; 
+}
+
+void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver)
+{
+    static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
+    static int direction = -1;                   // Track the current direction: 0 = up, 1 = down, 2 = left, 3 = right
+    static int artilleryUnlocked = 0;
+    static int torpedoUnlocked = 0;
+    static int torpedoedRows[GRID_SIZE] = {0}; // Track rows targeted by torpedo (0 = not targeted, 1 = targeted)
+
+    if (*shipsSunk >= 3)
+        torpedoUnlocked = 1; 
+    else if (*shipsSunk >= 1)
+        artilleryUnlocked = 1; 
+
+    // Priority 1: Process unresolved neighbors from the queue
+    if (!isNeighborQueueEmpty())
+    {
+        Cell nextTarget = dequeueNeighbor();
+        int row = nextTarget.row;
+        int col = nextTarget.col;
+
+        // Skip already-hit or invalid cells
+        if (opponentBoard[row][col] == '*' || opponentBoard[row][col] == 'o')
+        {
+            return;
+        }
+
+        // Fire at this neighbor
+        printf("megaBot fires at %d%c (from queue)\n", row + 1, 'A' + col);
+        if (opponentBoard[row][col] != '~')
+        {
+            printf("Hit!\n");
+            char shipChar = opponentBoard[row][col];
+            opponentBoard[row][col] = '*';
+            lastHitRow = row;
+            lastHitCol = col;
+
+            // Switch to focused sinking for this new ship
+            if (direction == -1)
+            {
+                if (row > 0 && megaBotShots[row - 1][col] == 0)
+                    direction = 0;
+                else if (row < GRID_SIZE - 1 && megaBotShots[row + 1][col] == 0)
+                    direction = 1;
+                else if (col > 0 && megaBotShots[row][col - 1] == 0)
+                    direction = 2;
+                else if (col < GRID_SIZE - 1 && megaBotShots[row][col + 1] == 0)
+                    direction = 3;
+            }
+
+            const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
+            if (sunkShip != NULL)
+            {
+                printf("megaBot sunk the %s!\n", sunkShip);
+                (*shipsSunk)++;
+                lastHitRow = -1;
+                lastHitCol = -1;
+                direction = -1;
+            }
+        }
+        else
+        {
+            printf("Miss!\n");
+            opponentBoard[row][col] = 'o';
+        }
+
+        if (checkWin(opponentBoard))
+        {
+            printf("megaBot wins!\n");
+            *gameOver = 1;
+        }
+        megaBotShots[row][col] = 1;
+        return;
+    }
+
+    // Priority 2: Use Torpedo if Unlocked and Queue is Empty
+    if (torpedoUnlocked)
+    {
+        for (int row = 0; row < GRID_SIZE; row++)
+        {
+            if (torpedoedRows[row] == 0)
+            {
+                printf("megaBot uses torpedo on row %d\n", row + 1);
+                torpedoAttack(opponentBoard, '1' + row);
+                torpedoedRows[row] = 1;
+
+                if (checkWin(opponentBoard))
+                {
+                    printf("megaBot wins!\n");
+                    *gameOver = 1;
+                    return;
+                }
                 return;
             }
         }
     }
 
-    int row, col;
-    do
+    // Priority 3: Follow Consecutive Hits
+    if (lastHitRow != -1 && lastHitCol != -1)
     {
-        row = rand() % GRID_SIZE;
-        col = rand() % GRID_SIZE;
-    } while (megaBotShots[row][col] != 0);
+        int newRow = lastHitRow, newCol = lastHitCol;
 
-    printf("megaBot fires at %d%c\n", row + 1, 'A' + col);
-    if (opponentBoard[row][col] != '~')
-    {
-        printf("Hit!\n");
-        char shipChar = opponentBoard[row][col];
-        opponentBoard[row][col] = '*';
-        lastHitRow = row;
-        lastHitCol = col;
+        // Determine next cell based on direction
+        if (direction == 0)
+            newRow--;
+        else if (direction == 1)
+            newRow++;
+        else if (direction == 2)
+            newCol--;
+        else if (direction == 3)
+            newCol++;
 
-        const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
-        if (sunkShip != NULL)
+        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
         {
-            printf("megaBot sunk the %s!\n", sunkShip);
-            (*shipsSunk)++;
+            printf("megaBot fires at %d%c (focused sinking)\n", newRow + 1, 'A' + newCol);
+
+            if (opponentBoard[newRow][newCol] != '~')
+            {
+                printf("Hit!\n");
+                char shipChar = opponentBoard[newRow][newCol];
+                opponentBoard[newRow][newCol] = '*';
+                lastHitRow = newRow;
+                lastHitCol = newCol;
+
+                const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
+                if (sunkShip != NULL)
+                {
+                    printf("megaBot sunk the %s!\n", sunkShip);
+                    (*shipsSunk)++;
+                    lastHitRow = -1;
+                    lastHitCol = -1;
+                    direction = -1;
+                }
+            }
+            else
+            {
+                printf("Miss!\n");
+                opponentBoard[newRow][newCol] = 'o';
+                direction = -1;
+            }
+
+            if (checkWin(opponentBoard))
+            {
+                printf("megaBot wins!\n");
+                *gameOver = 1;
+            }
+            megaBotShots[newRow][newCol] = 1;
+            return;
+        }
+        else
+        {
+            direction = -1;
         }
     }
-    else
+
+    // Priority 4: Use Artillery if Unlocked
+    if (artilleryUnlocked)
     {
-        printf("Miss!\n");
-        opponentBoard[row][col] = 'o';
+        for (int row = 0; row < GRID_SIZE - 1; row += 2)
+        {
+            for (int col = 0; col < GRID_SIZE - 1; col += 2)
+            {
+                if (isArtilleryTargetValid(row, col, megaBotShots))
+                {
+                    printf("megaBot uses artillery at %d%c\n", row + 1, 'A' + col);
+                    artilleryStrike(opponentBoard, row, col, shipsSunk);
+                    markArtilleryImpact(row, col, megaBotShots);
+
+                    // Process hits in the 2x2 area
+                    int artilleryHits[4][2];
+                    int hitCount = processArtilleryHits(row, col, opponentBoard, artilleryHits);
+
+                    // Enqueue valid neighbors of each hit
+                    for (int i = 0; i < hitCount; i++)
+                    {
+                        int hitRow = artilleryHits[i][0];
+                        int hitCol = artilleryHits[i][1];
+
+                        for (int d = 0; d < 4; d++)
+                        {
+                            int newRow = hitRow + directions[d][0];
+                            int newCol = hitCol + directions[d][1];
+
+                            if (newRow >= 0 && newRow < GRID_SIZE &&
+                                newCol >= 0 && newCol < GRID_SIZE &&
+                                opponentBoard[newRow][newCol] != '*' &&
+                                opponentBoard[newRow][newCol] != 'o' &&
+                                megaBotShots[newRow][newCol] == 0)
+                            {
+                                enqueueNeighbor(newRow, newCol);
+                            }
+                        }
+                    }
+                    return;
+                }
+            }
+        }
     }
 
-    if (checkWin(opponentBoard))
-    {
-        printf("megaBot wins!\n");
-        *gameOver = 1;
-    }
-    megaBotShots[row][col] = 1;
+    // Priority 5: Checkerboard Firing (Default Search)
+    if (checkerboard(opponentBoard, megaBotShots, shipsSunk, gameOver, &lastHitRow, &lastHitCol, &direction))
+        return; 
 }
 
 int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRID_SIZE][GRID_SIZE],
@@ -861,7 +1021,6 @@ void displayTurnInfo(const char *playerName, char opponentBoard[GRID_SIZE][GRID_
 {
     printf("\n%s's turn to play!\n", playerName);
 
-    // Display the opponent's board for Player 1 (hidden ships)
     if (strcmp(playerName, "megaBot") != 0)
     {
         displayBoard(opponentBoard, showMisses, 1);
@@ -898,7 +1057,7 @@ int getCommandCode(const char *command)
 
 void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShips)
 {
-    printf("  A B C D E F G H I J\n"); 
+    printf("  A B C D E F G H I J\n");
     for (int i = 0; i < GRID_SIZE; i++)
     {
         printf("%2d ", i + 1); // Row labels
@@ -907,7 +1066,7 @@ void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShip
             // Hide ships from the opponent if hideShips is 1
             if (hideShips && (board[i][j] != '*' && board[i][j] != 'o'))
             {
-                printf("~ "); 
+                printf("~ ");
             }
             else if (board[i][j] == '*' || (showMisses && board[i][j] == 'o'))
             {
@@ -915,7 +1074,7 @@ void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShip
             }
             else if (board[i][j] == 'o' && !showMisses)
             {
-                printf("~ "); // In hard mode, replace misses 'o' with water '~'
+                printf("~ ");
             }
             else
             {
@@ -930,19 +1089,19 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, i
 {
     if ((board[row][col] == '*' || board[row][col] == 'o') && showMisses == 1)
     {
-        return -1; // Location already fired upon, only warn in easy mode
+        return -1;
     }
 
     if (board[row][col] == '~')
     {
         printf("Miss!\n");
-        board[row][col] = 'o'; 
+        board[row][col] = 'o';
     }
     else
     {
         printf("Hit!\n");
         char shipChar = board[row][col];
-        board[row][col] = '*'; 
+        board[row][col] = '*';
 
         const char *sunkShip = checkShipSunk(board, shipChar);
         if (sunkShip != NULL)
@@ -950,20 +1109,20 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, i
             printf("You sunk the %s!\n", sunkShip);
             (*shipsSunk)++;
 
-            if (*shipsSunk >= 1)
+            if (*shipsSunk == 1)
                 printf("Artillery unlocked!\n");
             if (*shipsSunk >= 3)
                 printf("Torpedo unlocked!\n");
         }
     }
 
-    return 1; // Successful fire
+    return 1;
 }
 
 int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE], int row, int col, int player)
 {
-    int foundShip = 0;     
-    int smokeDetected = 0; 
+    int foundShip = 0;
+    int smokeDetected = 0;
 
     // Select the opponent's smoke effect grid based on the current player
     int(*smokeEffectGrid)[GRID_SIZE] = (player == 1) ? megaBotSmokeEffectGrid : player1SmokeEffectGrid;
@@ -995,7 +1154,7 @@ int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE
             }
         }
         printf("No enemy ships found.\n");
-        return 0; 
+        return 0;
     }
 
     if (foundShip)
@@ -1007,7 +1166,7 @@ int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE
         printf("No enemy ships found.\n");
     }
 
-    return foundShip; 
+    return foundShip;
 }
 
 void applySmokeScreen(char opponentRadar[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int *smokeUsed, int *lostTurn, int player)
@@ -1029,10 +1188,10 @@ void applySmokeScreen(char opponentRadar[GRID_SIZE][GRID_SIZE], int row, int col
         {
             for (int j = col; j <= col + 1 && j < GRID_SIZE; j++)
             {
-                smokeEffectGrid[i][j] = 1; 
+                smokeEffectGrid[i][j] = 1;
             }
         }
-        (*smokeUsed)++; 
+        (*smokeUsed)++;
         printf("Smoke screen applied at %d%c\n", row + 1, 'A' + col);
     }
     else
@@ -1052,7 +1211,7 @@ void displaySmokeCount(int showMisses, int currentPlayer, int player1ShipsSunk, 
         printf("Player %d, you have %d smoke(s) left.\n", currentPlayer + 1, remainingSmoke);
     }
     else
-    { 
+    {
         printf("Hard mode: Smoke count not displayed.\n");
     }
 }
@@ -1105,45 +1264,47 @@ void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target)
     int index;
     bool hit = false;
 
-    if (target >= 'A' && target <= 'J')
-    { // Column attack
-        index = target - 'A';
+    if (target >= 'A' && target <= 'J') // Column attack
+    {
+        index = target - 'A'; // Convert column letter to index
         for (int i = 0; i < GRID_SIZE; i++)
         {
-            if (board[i][index] != '~' && board[i][index] != '*' && board[i][index] != 'o')
+            if (board[i][index] != '*' && board[i][index] != 'o')
             {
-                printf("Hit at row %d, column %c\n", i + 1, target);
-                board[i][index] = '*'; // Mark the hit
-                hit = true;
+                if (board[i][index] != '~')
+                {
+                    printf("Hit at row %d, column %c\n", i + 1, target);
+                    board[i][index] = '*';
+                    hit = true;
+                }
+                else
+                {
+                    board[i][index] = 'o';
+                }
             }
         }
     }
-    else if (target >= '1' && target <= '9')
-    { // Row attack
-        index = target - '1';
+    else if ((target >= '1' && target <= '9') || target == '0') // Row attack
+    {
+        index = (target == '0') ? 9 : target - '1'; // Handle row 10 ('0')
         for (int i = 0; i < GRID_SIZE; i++)
         {
-            if (board[index][i] != '~' && board[index][i] != '*' && board[index][i] != 'o')
+            if (board[index][i] != '*' && board[index][i] != 'o')
             {
-                printf("Hit at row %d, column %d\n", index + 1, i + 1);
-                board[index][i] = '*';
-                hit = true;
+                if (board[index][i] != '~')
+                {
+                    printf("Hit at row %d, column %c\n", index + 1, 'A' + i);
+                    board[index][i] = '*';
+                    hit = true;
+                }
+                else
+                {
+                    board[index][i] = 'o';
+                }
             }
         }
     }
-    else if (target == '0')
-    { // Row attack for row 10
-        index = 9;
-        for (int i = 0; i < GRID_SIZE; i++)
-        {
-            if (board[index][i] != '~' && board[index][i] != '*' && board[index][i] != 'o')
-            {
-                printf("Hit at row %d, column %d\n", index + 1, i + 1);
-                board[index][i] = '*';
-                hit = true;
-            }
-        }
-    }
+
     if (!hit)
     {
         printf("Miss\n");
@@ -1178,7 +1339,6 @@ const char *checkShipSunk(char board[GRID_SIZE][GRID_SIZE], char shipChar)
     }
 }
 
-// Function to check if all ships on the board have been sunk
 int checkWin(char board[GRID_SIZE][GRID_SIZE])
 {
     for (int i = 0; i < GRID_SIZE; i++)
@@ -1192,5 +1352,5 @@ int checkWin(char board[GRID_SIZE][GRID_SIZE])
             }
         }
     }
-    return 1; // All ships have been sunk
+    return 1;
 }
