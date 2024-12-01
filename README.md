@@ -99,8 +99,8 @@ Includes test cases for specific functions that played a critical role in the ga
    - Phase 2: `./phase2`
 
 ### Preferred Development Environment
-We recommend using **Visual Studio Code (VS Code)** for compiling and running the code. VS Code provides an integrated terminal, debugging tools, and support for extensions like the C/C++ extension by Microsoft, which simplifies code navigation and execution.
----
+You can use **Visual Studio Code (VS Code)** as a convenient option for compiling and running the code. VS Code offers an integrated terminal, debugging tools, and extensions like the C/C++ extension by Microsoft, which can help simplify the development process. However, any editor or IDE that supports C programming will work.
+
 
 ## Note for TAs
 This README serves as a guide for understanding our Battleship project. For detailed explanations of the MegaBot strategy, refer to the project report. For function-level details, consult `Specifications.md`. For test cases and results, see `Testing.md`.
