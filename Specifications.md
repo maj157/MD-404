@@ -1273,6 +1273,63 @@ void displaySmokeCount(int showMisses, int currentPlayer, int player1ShipsSunk, 
     }
 }
 
+// Requires:
+// - board is a valid 2D array of size GRID_SIZE x GRID_SIZE.
+// - row and col are valid integers representing the top-left corner of the 2x2 area to strike, within the range [0, GRID_SIZE - 1].
+// - shipsSunk is a valid pointer to an integer tracking the number of ships sunk.
+// - GRID_SIZE is defined and greater than 0.
+// - The function depends on the helper function `checkShipSunk()` to determine if a ship is sunk.
+// Effects:
+// - Performs an artillery strike on a 2x2 area of the board starting at (row, col):
+//   - If a cell contains '~', it marks the cell as a miss ('o') and prints a "Miss" message.
+//   - If a cell contains a ship, it marks the cell as hit ('*'), prints a "Hit" message, and tracks the hit ship in the `hitShips` array.
+// - After the strike, checks if any ships were sunk:
+//   - For each unique hit ship, calls `checkShipSunk()`.
+//   - If a ship is sunk, increments `*shipsSunk` and prints the name of the sunk ship.
+// - Returns 1 to indicate the strike was executed.
+int artilleryStrike(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk)
+{
+    char hitShips[4] = {'\0', '\0', '\0', '\0'};
+    int index = 0;
+    int alreadySunk[256] = {0};
+
+    printf("Performing artillery strike at %d %c!\n", row + 1, col + 'A');
+
+    for (int i = row; i < row + 2 && i < GRID_SIZE; i++)
+    {
+        for (int j = col; j < col + 2 && j < GRID_SIZE; j++)
+        {
+            if (board[i][j] == '~')
+            {
+                printf("Miss at %d %c.\n", i + 1, j + 'A');
+                board[i][j] = 'o';
+            }
+            else if (board[i][j] != '*' && board[i][j] != 'o')
+            {
+                printf("Hit at %d %c!\n", i + 1, j + 'A');
+                hitShips[index++] = board[i][j];
+                board[i][j] = '*';
+            }
+        }
+    }
+
+    for (int i = 0; i < index; i++)
+    {
+        if (!alreadySunk[(unsigned char)hitShips[i]])
+        {
+            const char *sunkShip = checkShipSunk(board, hitShips[i]);
+            if (sunkShip != NULL)
+            {
+                printf("You sunk the %s!\n", sunkShip);
+                alreadySunk[(unsigned char)hitShips[i]] = 1;
+                (*shipsSunk)++;
+            }
+        }
+    }
+
+    return 1;
+}
+
 
 
 
