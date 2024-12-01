@@ -409,6 +409,51 @@ int processArtilleryHits(int row, int col, char opponentBoard[GRID_SIZE][GRID_SI
     return hitCount;
 }
 
+// Requires:
+// - hit is a pointer to a valid Cell structure containing the row and column of the last successful hit.
+// - hitCount is the current number of hits made by the megaBot.
+// - opponentBoard is a 2D array of size GRID_SIZE x GRID_SIZE representing the opponent's board.
+//   - Cells marked with 'o' are missed shots, and cells marked with '*' are already hit.
+// - shipsSunk is a pointer to an integer tracking the number of ships sunk so far.
+// - gameOver is a pointer to an integer indicating whether the game is over (1 for game over, 0 otherwise).
+// Effects:
+// - Attempts to fire at all valid neighboring cells (up, down, left, right) around the given `hit`.
+// - Calls `fireAt()` to perform the firing action and updates the opponent's board.
+// - If a successful hit leads to sinking all ships, calls `checkWin()` to determine if the megaBot has won the game.
+// - If `checkWin()` returns true, sets `*gameOver` to 1 and announces the megaBot's victory.
+// - Returns early after the first successful fire or if the game is won.
+void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver)
+{
+    int row = hit->row;
+    int col = hit->col;
+    int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Up, Down, Left, Right
+
+    for (int d = 0; d < 4; d++)
+    {
+        int newRow = row + directions[d][0];
+        int newCol = col + directions[d][1];
+
+        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE &&
+            opponentBoard[newRow][newCol] != 'o' && opponentBoard[newRow][newCol] != '*')
+        {
+
+            int result = fireAt(opponentBoard, newRow, newCol, shipsSunk, 0);
+
+            if (result == 1) // Successful fire
+            {
+                if (checkWin(opponentBoard))
+                {
+                    printf("megaBot wins!\n");
+                    *gameOver = 1;
+                    return;
+                }
+                return;
+            }
+        }
+    }
+}
+
+
 
 
 
