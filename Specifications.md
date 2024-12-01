@@ -20,3 +20,17 @@ void initializeGame(char player1Board[GRID_SIZE][GRID_SIZE], char botBoard[GRID_
     }
 }
 
+// Requires: GRID_SIZE is a positive integer.
+//           board is a 2D array of size GRID_SIZE x GRID_SIZE.
+// Effects: Initializes the board by filling every cell with the character '~'.
+void initializeBoard(char board[GRID_SIZE][GRID_SIZE])
+{
+    for (int i = 0; i < GRID_SIZE; i++)
+    {
+        for (int j = 0; j < GRID_SIZE; j++)
+        {
+            board[i][j] = '~';
+        }
+    }
+}
+
