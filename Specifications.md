@@ -1198,6 +1198,54 @@ int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE
     return foundShip;
 }
 
+// Requires:
+// - opponentRadar is a valid 2D array of size GRID_SIZE x GRID_SIZE.
+// - row and col are valid integers representing coordinates within the range [0, GRID_SIZE - 1].
+// - shipsSunk, smokeUsed, and lostTurn are valid pointers to integers.
+// - player is a valid player identifier (1 for Player 1, otherwise for MegaBot).
+// - GRID_SIZE is defined and greater than 0.
+// - The function depends on globally defined 2D arrays: player1SmokeEffectGrid and megaBotSmokeEffectGrid.
+// Effects:
+// - Checks if the player has used more smoke screens than the number of ships sunk.
+//   - If true, prints a message, sets `*lostTurn` to 1, and forfeits the player's turn.
+// - If the coordinates are valid:
+//   - Applies a smoke screen to a 2x2 block on the `smokeEffectGrid` starting at (row, col).
+//   - Marks the affected cells with `1` in the `smokeEffectGrid`.
+//   - Increments `*smokeUsed` and prints the smoke screen coordinates.
+// - If the coordinates are invalid, prints an error message and does not apply the smoke screen.
+void applySmokeScreen(char opponentRadar[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int *smokeUsed, int *lostTurn, int player)
+{
+    if (*smokeUsed >= *shipsSunk)
+    {
+        printf("You are only allowed one smoke screen per ship sunk.\n");
+        printf("You have lost your turn!\n");
+        *lostTurn = 1;
+        return;
+    }
+
+    // Determine which player's smoke effect grid to use based on the current player
+    int(*smokeEffectGrid)[GRID_SIZE] = (player == 1) ? player1SmokeEffectGrid : megaBotSmokeEffectGrid;
+
+    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE)
+    {
+        for (int i = row; i <= row + 1 && i < GRID_SIZE; i++)
+        {
+            for (int j = col; j <= col + 1 && j < GRID_SIZE; j++)
+            {
+                smokeEffectGrid[i][j] = 1;
+            }
+        }
+        (*smokeUsed)++;
+        printf("Smoke screen applied at %d%c\n", row + 1, 'A' + col);
+    }
+    else
+    {
+        printf("Invalid smoke screen coordinates. Try again.\n");
+    }
+}
+
+
+
 
 
 
