@@ -453,6 +453,73 @@ void fireAroundHits(Cell *hit, int hitCount, char opponentBoard[GRID_SIZE][GRID_
     }
 }
 
+// Requires: opponentBoard is a valid 2D array of size GRID_SIZE x GRID_SIZE, representing the opponent's board.
+//           megaBotShots is a valid 2D array of size GRID_SIZE x GRID_SIZE, tracking MegaBot's visited cells.
+//           shipsSunk, gameOver, lastHitRow, lastHitCol, and direction are valid pointers to integers.
+//           GRID_SIZE is defined and greater than 0.
+//           The function depends on helper functions `checkShipSunk()` and `checkWin()`.
+// Effects:  - Simulates MegaBot firing at the opponent's board in a checkerboard pattern.
+//           - Fires at the first unvisited cell in the pattern, marking it as visited in megaBotShots.
+//           - If a hit occurs:
+//               - Updates `lastHitRow` and `lastHitCol` to the coordinates of the hit.
+//               - Updates `direction` to suggest a direction for focused sinking if valid unvisited neighbors exist.
+//               - Checks if the hit ship is sunk using `checkShipSunk()` and increments `shipsSunk` if a ship is sunk.
+//               - Resets `lastHitRow`, `lastHitCol`, and `direction` if a ship is sunk.
+//           - If a miss occurs, marks the cell with 'o' on the opponent's board.
+//           - Checks for a game-over state using `checkWin()` and sets `gameOver` to 1 if all ships are sunk.
+//           - Prints the result of each shot (hit, miss, or sunk ship) and whether the game is over.
+//           - Returns 1 if a move was made (either a hit or miss), or 0 if no unvisited cells were available.
+int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver, int *lastHitRow, int *lastHitCol, int *direction) {
+    for (int i = 0; i < GRID_SIZE; i++) {
+        for (int j = (i % 2); j < GRID_SIZE; j += 2) {
+            if (megaBotShots[i][j] == 0) { // Check unvisited cells
+                printf("megaBot fires at %d%c\n", i + 1, 'A' + j);
+                if (opponentBoard[i][j] != '~') { // Hit
+                    printf("Hit!\n");
+                    char shipChar = opponentBoard[i][j];
+                    opponentBoard[i][j] = '*';
+                    *lastHitRow = i;
+                    *lastHitCol = j;
+
+                    // Determine next direction for focused sinking
+                    if (i > 0 && megaBotShots[i - 1][j] == 0)
+                        *direction = 0; // Up
+                    else if (i < GRID_SIZE - 1 && megaBotShots[i + 1][j] == 0)
+                        *direction = 1; // Down
+                    else if (j > 0 && megaBotShots[i][j - 1] == 0)
+                        *direction = 2; // Left
+                    else if (j < GRID_SIZE - 1 && megaBotShots[i][j + 1] == 0)
+                        *direction = 3; // Right
+
+                    // Check if a ship was sunk
+                    const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
+                    if (sunkShip != NULL) {
+                        printf("megaBot sunk the %s!\n", sunkShip);
+                        (*shipsSunk)++;
+                        *lastHitRow = -1; // Reset for new ship
+                        *lastHitCol = -1;
+                        *direction = -1;
+                    }
+                } else { // Miss
+                    printf("Miss!\n");
+                    opponentBoard[i][j] = 'o';
+                }
+
+                // Check if the game is over
+                if (checkWin(opponentBoard)) {
+                    printf("megaBot wins!\n");
+                    *gameOver = 1;
+                    return 1; // Signal that a move was made
+                }
+
+                megaBotShots[i][j] = 1; // Mark as visited
+                return 1; // Signal that a move was made
+            }
+        }
+    }
+    return 0; // No move made
+}
+
 
 
 
