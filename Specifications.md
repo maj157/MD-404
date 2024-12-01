@@ -1038,6 +1038,52 @@ int getCommandCode(const char *command) {
     return 0; // Invalid command
 }
 
+// Requires:
+// - board is a 2D array of size GRID_SIZE x GRID_SIZE representing the state of the game board.
+//   - '~' represents an empty cell, '*' represents a hit ship segment, 'o' represents a missed shot,
+//     and other characters represent parts of ships.
+// - showMisses is a flag (integer):
+//   - If 1, missed shots ('o') are displayed on the board.
+//   - If 0, missed shots are hidden and displayed as '~'.
+// - hideShips is a flag (integer):
+//   - If 1, ship parts are hidden unless they are hit ('*') or missed ('o').
+//   - If 0, all cells, including ship parts, are displayed.
+// Effects:
+// - Prints the game board to the console with column labels ('A' to 'J') and row labels ('1' to GRID_SIZE).
+// - Displays cells based on the following rules:
+//   - Ships are hidden unless `hideShips` is 0 or the ship segment is hit ('*').
+//   - Missed shots ('o') are shown only if `showMisses` is 1.
+//   - Empty cells ('~') are always displayed unless overridden by the conditions above.
+void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShips)
+{
+    printf("  A B C D E F G H I J\n");
+    for (int i = 0; i < GRID_SIZE; i++)
+    {
+        printf("%2d ", i + 1); // Row labels
+        for (int j = 0; j < GRID_SIZE; j++)
+        {
+            // Hide ships from the opponent if hideShips is 1
+            if (hideShips && (board[i][j] != '*' && board[i][j] != 'o'))
+            {
+                printf("~ ");
+            }
+            else if (board[i][j] == '*' || (showMisses && board[i][j] == 'o'))
+            {
+                printf("%c ", board[i][j]);
+            }
+            else if (board[i][j] == 'o' && !showMisses)
+            {
+                printf("~ ");
+            }
+            else
+            {
+                printf("%c ", board[i][j]);
+            }
+        }
+        printf("\n");
+    }
+}
+
 
 
 
