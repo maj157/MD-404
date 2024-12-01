@@ -1244,6 +1244,35 @@ void applySmokeScreen(char opponentRadar[GRID_SIZE][GRID_SIZE], int row, int col
     }
 }
 
+// Requires:
+// - showMisses is an integer flag:
+//   - If 1, smoke count is displayed.
+//   - If 0, smoke count is hidden (hard mode).
+// - currentPlayer is an integer representing the current player (0 for Player 1, 1 for Player 2/megaBot).
+// - player1ShipsSunk and player2ShipsSunk are integers representing the number of ships sunk by Player 1 and Player 2, respectively.
+// - player1SmokeUsed and player2SmokeUsed are integers representing the number of smoke effects used by Player 1 and Player 2, respectively.
+// Effects:
+// - If `showMisses` is 1:
+//   - Calculates the remaining smoke effects for the current player based on the difference between ships sunk and smoke effects used.
+//   - Prints the remaining smoke effects for the current player in the format: "Player X, you have Y smoke(s) left."
+// - If `showMisses` is 0:
+//   - Prints "Hard mode: Smoke count not displayed."
+void displaySmokeCount(int showMisses, int currentPlayer, int player1ShipsSunk, int player2ShipsSunk, int player1SmokeUsed, int player2SmokeUsed)
+{
+    if (showMisses == 1)
+    { 
+        int remainingSmoke = (currentPlayer == 0)
+                                 ? player1ShipsSunk - player1SmokeUsed
+                                 : player2ShipsSunk - player2SmokeUsed;
+
+        printf("Player %d, you have %d smoke(s) left.\n", currentPlayer + 1, remainingSmoke);
+    }
+    else
+    {
+        printf("Hard mode: Smoke count not displayed.\n");
+    }
+}
+
 
 
 
