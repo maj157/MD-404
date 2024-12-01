@@ -612,9 +612,9 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
 {
     static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
     static int direction = -1;                   // Track the current direction: 0 = up, 1 = down, 2 = left, 3 = right
-    static int artilleryAvailable = 0;           // Artillery available for the next turn
+    static int artilleryAvailable = 0;           
     static int artilleryUsed = 0;
-    static int torpedoAvailable = 0;             // Torpedo available for the next turn
+    static int torpedoAvailable = 0;             
     static int torpedoUsed = 0;
 
     if (*shipsSunk == 1 && artilleryAvailable == 0)

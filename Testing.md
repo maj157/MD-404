@@ -219,7 +219,7 @@ The `megaBotMakeMove` function drives MegaBot's decision-making process. It tran
 |-----------------------------------------|---------------------------|---------------------------------------------------------------------------------|---------|
 | Initial hunting mode (checkerboard)     | Empty board               | MegaBot fires at alternating cells in a checkerboard pattern (e.g., A1, A3).    | Passed  |
 | Transition to Focused Attack Mode       | `Hit at A1`               | MegaBot fires at A2, A3 (neighboring cells) until the ship is sunk.             | Passed  |
-| Post-sinking behavior                   | `Ship sunk at A1`         | MegaBot returns to checkerboard firing using artillery.                         | Passed  |
+| Post-sinking behavior                   | `Ship sunk at A1`         | MegaBot returns to checkerboard firing                                          | Passed  |
 | Artillery strike includes a hit         | `Artillery at B2 (hit)`   | Neighboring cells of B3 are added to the queue, and MegaBot fires from queue.   | Passed  |
 | Queue-driven targeting works            | `Queue = {B3, C3}`        | MegaBot processes all neighbors before returning to checkerboard mode.          | Passed  |
 | Unlocking torpedo after three ships     | `Three ships sunk`        | MegaBot begins torpedo attacks on rows or columns.                              | Passed  |
@@ -242,15 +242,14 @@ The `megaBotMakeMove` function drives MegaBot's decision-making process. It tran
   - MegaBot targets A2, then A3, and announces the ship is sunk.
 
 #### 3. Artillery Mode (2x2 Attack)
-- **Test Objective**: Ensure MegaBot uses artillery effectively to target 2x2 blocks after sinking a ship.
+- **Test Objective**: Ensure MegaBot uses artillery once unlocked to target 2x2 blocks after sinking a ship.
 - **Test Execution**:
-  - Verified MegaBot switches to artillery attacks (e.g., targeting B2–C3).
   - Checked that hits within the 2x2 block enqueue neighboring cells for further targeting.
 - **Expected Behavior**:
   - MegaBot adds all valid neighbors of a hit to the queue and systematically processes them.
 
 #### 4. Torpedo Mode (Row/Column Attack)
-- **Test Objective**: Test MegaBot’s use of torpedo attacks after three ships are sunk.
+- **Test Objective**: Test MegaBot’s use of torpedo attack once after three ships are sunk.
 - **Test Execution**:
   - Verified MegaBot systematically targets entire rows or columns, starting with the least explored.
   - Checked for proper handling of misses and continuation to the next row/column.

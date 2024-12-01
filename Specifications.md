@@ -524,35 +524,55 @@ int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID
 }
 
 // Requires:
-// - opponentBoard is a 2D array of size GRID_SIZE x GRID_SIZE representing the opponent's board.
-//   - '~' indicates an empty cell, 'o' indicates a missed shot, '*' indicates a hit ship segment, 
-//     and other characters represent ship parts.
-// - shipsSunk is a pointer to an integer tracking the number of ships sunk by megaBot.
-// - gameOver is a pointer to an integer indicating whether the game is over (1 for game over, 0 otherwise).
+// - `opponentBoard` is a valid 2D array of size GRID_SIZE x GRID_SIZE representing the opponent's game board.
+// - `shipsSunk` is a valid pointer to an integer tracking the number of ships sunk by MegaBot.
+// - `gameOver` is a valid pointer to an integer; it should be set to 1 if the game is over.
+// - Global variables and helper functions used in the function (e.g., `checkShipSunk`, `torpedoAttack`, 
+//   `artilleryStrike`, `enqueueNeighbor`, `isNeighborQueueEmpty`, etc.) are properly defined and functional.
+// - `megaBotShots` is a valid 2D array of integers tracking MegaBot's shot history, initialized to 0 for unattempted cells.
+// - `directions` is a valid 2D array defining movement offsets for up, down, left, and right directions.
+// - Torpedo and artillery availability are tracked via `torpedoAvailable`, `artilleryAvailable`, and their respective usage flags.
+// - The `GRID_SIZE` constant is defined and greater than 0.
+// - Helper functions such as `processArtilleryHits`, `checkerboard`, and `markArtilleryImpact` are properly implemented.
+// - A queue for neighboring cells exists with functions `enqueueNeighbor` and `dequeueNeighbor` defined for adding and retrieving cells.
+// - All board cell values are valid (`'~'`, `'o'`, `'*'`, or ship identifiers).
+//
 // Effects:
-// - Executes megaBot's turn, prioritizing moves in the following order:
-//   1. Fires at unresolved neighboring cells from a queue if any exist.
-//   2. Uses torpedo attack if unlocked (after sinking 3 ships) and no unresolved neighbors remain.
-//   3. Follows up on consecutive hits for focused sinking of a ship if a previous hit exists.
-//   4. Uses artillery strike if unlocked (after sinking 1 ship) and no focused sinking is active.
-//   5. Performs checkerboard firing as a default search mechanism if no higher priority action is available.
-// - Updates the opponent's board and megaBot's shot tracking grid (megaBotShots).
-// - Tracks successful hits and sinks ships by checking neighboring cells and processing focused sinking if needed.
-// - Unlocks special attacks (torpedo and artillery) based on the number of ships sunk.
-// - Checks for a win after each move and sets *gameOver to 1 if all ships are sunk.
-// - Returns early if a win condition is detected or a prioritized action is completed.
+// - Manages MegaBot's actions for its turn, prioritizing moves in the following order:
+//   1. **Neighbor queue processing**: If unresolved neighbors exist, MegaBot fires at them sequentially.
+//   2. **Torpedo usage**: If the torpedo is unlocked and unused, it targets an untouched row or column for a powerful strike.
+//   3. **Focused sinking**: If a previous hit exists (`lastHitRow`, `lastHitCol`), MegaBot follows up to sink the ship by targeting adjacent cells.
+//   4. **Artillery usage**: If the artillery is unlocked and unused, it targets a valid 2x2 grid to maximize damage.
+//   5. **Checkerboard firing**: As a fallback, MegaBot employs a systematic checkerboard search for ships.
+// - Updates `opponentBoard` with hits ('*') and misses ('o') and modifies MegaBot's shot history (`megaBotShots`) accordingly.
+// - Unlocks special moves (artillery or torpedo) when conditions are met:
+//   - Artillery is unlocked once after sinking 1 ship.
+//   - Torpedo is unlocked once after sinking 3 ships and remains available until used.
+// - Ends the game by setting `*gameOver` to 1 and printing "MegaBot wins!" if all ships are sunk (`checkWin`).
+// - Tracks and adjusts the direction (`direction`) of follow-up shots after a hit for focused sinking.
+// - Processes artillery strikes and enqueues neighbors from valid hits in the 2x2 area for future targeting.
+// - Resets focused sinking mode (i.e., `lastHitRow`, `lastHitCol`, `direction`) when all neighbors are resolved or a ship is sunk.
 void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver)
 {
     static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
     static int direction = -1;                   // Track the current direction: 0 = up, 1 = down, 2 = left, 3 = right
-    static int artilleryUnlocked = 0;
-    static int torpedoUnlocked = 0;
-    static int torpedoedRows[GRID_SIZE] = {0}; // Track rows targeted by torpedo (0 = not targeted, 1 = targeted)
+    static int artilleryAvailable = 0;           // Artillery available for the next turn
+    static int artilleryUsed = 0;
+    static int torpedoAvailable = 0;             // Torpedo available for the next turn
+    static int torpedoUsed = 0;
 
-    if (*shipsSunk >= 3)
-        torpedoUnlocked = 1; // Unlock torpedo after sinking 3 ships
-    else if (*shipsSunk >= 1)
-        artilleryUnlocked = 1; // Unlock artillery after sinking 1 ship
+    if (*shipsSunk == 1 && artilleryAvailable == 0)
+    {
+        artilleryAvailable = 1; 
+        artilleryUsed = 0;
+        printf("MegaBot unlocks Artillery for the next turn!\n");
+    }
+
+    if (*shipsSunk == 3 && torpedoAvailable == 0 && torpedoUsed == 0)
+    {
+        torpedoAvailable = 1; // Unlock torpedo for the next turn
+        printf("MegaBot unlocks Torpedo for the next turn!\n");
+    }
 
     // Priority 1: Process unresolved neighbors from the queue
     if (!isNeighborQueueEmpty())
@@ -615,87 +635,139 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
     }
 
     // Priority 2: Use Torpedo if Unlocked and Queue is Empty
-    if (torpedoUnlocked)
+    if (torpedoAvailable && !torpedoUsed && isNeighborQueueEmpty())
     {
+        int bestTarget = -1;
+        int isRow = 1; // 1 = row, 0 = column
+
+        // Find the first untouched row
         for (int row = 0; row < GRID_SIZE; row++)
         {
-            if (torpedoedRows[row] == 0)
+            int untouched = 1;
+            for (int col = 0; col < GRID_SIZE; col++)
             {
-                printf("megaBot uses torpedo on row %d\n", row + 1);
-                torpedoAttack(opponentBoard, '1' + row);
-                torpedoedRows[row] = 1;
-
-                if (checkWin(opponentBoard))
+                if (opponentBoard[row][col] == '*' || opponentBoard[row][col] == 'o')
                 {
-                    printf("megaBot wins!\n");
-                    *gameOver = 1;
-                    return;
+                    untouched = 0;
+                    break;
                 }
+            }
+            if (untouched)
+            {
+                bestTarget = row;
+                break;
+            }
+        }
+
+        // If no untouched row, find the first untouched column
+        if (bestTarget == -1)
+        {
+            isRow = 0;
+            for (int col = 0; col < GRID_SIZE; col++)
+            {
+                int untouched = 1;
+                for (int row = 0; row < GRID_SIZE; row++)
+                {
+                    if (opponentBoard[row][col] == '*' || opponentBoard[row][col] == 'o')
+                    {
+                        untouched = 0;
+                        break;
+                    }
+                }
+                if (untouched)
+                {
+                    bestTarget = col;
+                    break;
+                }
+            }
+        }
+
+        // Use Torpedo if a valid target is found
+        if (bestTarget != -1)
+        {
+            if (isRow)
+            {
+                printf("MegaBot uses Torpedo on row %d\n", bestTarget + 1);
+                torpedoAttack(opponentBoard, '1' + bestTarget); 
+            }
+            else
+            {
+                printf("MegaBot uses Torpedo on column %c\n", 'A' + bestTarget);
+                torpedoAttack(opponentBoard, 'A' + bestTarget); 
+            }
+
+            torpedoAvailable = 0; 
+            torpedoUsed = 1;      
+            printf("Torpedo is now unavailable.\n");
+
+            if (checkWin(opponentBoard))
+            {
+                printf("MegaBot wins!\n");
+                *gameOver = 1;
                 return;
             }
+            return;
         }
     }
 
     // Priority 3: Follow Consecutive Hits
     if (lastHitRow != -1 && lastHitCol != -1)
     {
-        int newRow = lastHitRow, newCol = lastHitCol;
-
-        // Determine next cell based on direction
-        if (direction == 0)
-            newRow--;
-        else if (direction == 1)
-            newRow++;
-        else if (direction == 2)
-            newCol--;
-        else if (direction == 3)
-            newCol++;
-
-        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
+        for (int d = 0; d < 4; d++) // Check all 4 neighbors
         {
-            printf("megaBot fires at %d%c (focused sinking)\n", newRow + 1, 'A' + newCol);
+            int newRow = lastHitRow + directions[d][0];
+            int newCol = lastHitCol + directions[d][1];
 
-            if (opponentBoard[newRow][newCol] != '~')
+            if (newRow >= 0 && newRow < GRID_SIZE &&
+                newCol >= 0 && newCol < GRID_SIZE &&
+                opponentBoard[newRow][newCol] != '*' &&
+                opponentBoard[newRow][newCol] != 'o' &&
+                megaBotShots[newRow][newCol] == 0)
             {
-                printf("Hit!\n");
-                char shipChar = opponentBoard[newRow][newCol];
-                opponentBoard[newRow][newCol] = '*';
-                lastHitRow = newRow;
-                lastHitCol = newCol;
+                printf("megaBot fires at %d%c (focused sinking)\n", newRow + 1, 'A' + newCol);
 
-                const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
-                if (sunkShip != NULL)
+                if (opponentBoard[newRow][newCol] != '~')
                 {
-                    printf("megaBot sunk the %s!\n", sunkShip);
-                    (*shipsSunk)++;
-                    lastHitRow = -1;
-                    lastHitCol = -1;
-                    direction = -1;
-                }
-            }
-            else
-            {
-                printf("Miss!\n");
-                opponentBoard[newRow][newCol] = 'o';
-                direction = -1;
-            }
+                    printf("Hit!\n");
+                    char shipChar = opponentBoard[newRow][newCol];
+                    opponentBoard[newRow][newCol] = '*';
+                    lastHitRow = newRow;
+                    lastHitCol = newCol;
 
-            if (checkWin(opponentBoard))
-            {
-                printf("megaBot wins!\n");
-                *gameOver = 1;
+                    const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
+                    if (sunkShip != NULL)
+                    {
+                        printf("megaBot sunk the %s!\n", sunkShip);
+                        (*shipsSunk)++;
+                        lastHitRow = -1;
+                        lastHitCol = -1;
+                        direction = -1;
+                    }
+                }
+                else
+                {
+                    printf("Miss!\n");
+                    opponentBoard[newRow][newCol] = 'o';
+                }
+
+                if (checkWin(opponentBoard))
+                {
+                    printf("megaBot wins!\n");
+                    *gameOver = 1;
+                }
+                megaBotShots[newRow][newCol] = 1;
+                return; 
             }
-            megaBotShots[newRow][newCol] = 1;
-            return;
         }
-        else
-        {
-            direction = -1;
-        }
+
+        // If all neighbors are checked, reset to hunting mode
+        lastHitRow = -1;
+        lastHitCol = -1;
+        direction = -1;
     }
 
     // Priority 4: Use Artillery if Unlocked
-    if (artilleryUnlocked)
+    if (artilleryAvailable && !artilleryUsed)
     {
         for (int row = 0; row < GRID_SIZE - 1; row += 2)
         {
@@ -705,13 +777,13 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
                 {
                     printf("megaBot uses artillery at %d%c\n", row + 1, 'A' + col);
                     artilleryStrike(opponentBoard, row, col, shipsSunk);
+                    artilleryUsed = 1;
                     markArtilleryImpact(row, col, megaBotShots);
 
                     // Process hits in the 2x2 area
                     int artilleryHits[4][2];
                     int hitCount = processArtilleryHits(row, col, opponentBoard, artilleryHits);
 
-                    // Enqueue valid neighbors of each hit
                     for (int i = 0; i < hitCount; i++)
                     {
                         int hitRow = artilleryHits[i][0];
@@ -739,8 +811,7 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
     }
     // Priority 5: Checkerboard Firing (Default Search)
     if (checkerboard(opponentBoard, megaBotShots, shipsSunk, gameOver, &lastHitRow, &lastHitCol, &direction))
-        return; 
-
+        return;
 }
 
 // Requires: 
@@ -824,7 +895,7 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
     }
     case 2: // Torpedo
     {
-        if (*shipsSunk >= 3)
+        if (torpedoAvailable)
         {
             char target;
             printf("Enter a column (A-J) or row (1-10) for torpedo attack: ");
@@ -834,6 +905,9 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
             if ((target >= 'A' && target <= 'J') || (target >= '1' && target <= '9') || target == '0')
             {
                 torpedoAttack(opponentBoard, target);
+                torpedoAvailable = 0; // Consume torpedo move
+                printf("Torpedo move used. It is now unavailable.\n");
+
                 if (checkWin(opponentBoard))
                 {
                     printf("\n%s wins!\n", playerName);
@@ -849,7 +923,7 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
         }
         else
         {
-            printf("Torpedo not unlocked. You need to sink 3 ships to unlock it.\n");
+            printf("Torpedo not available. You need to sink 3 ships to unlock it.\n");
         }
         break;
     }
@@ -893,7 +967,7 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
     }
     case 4: // Artillery
     {
-        if (*shipsSunk >= 1)
+        if (artilleryAvailable)
         {
             int row;
             char col;
@@ -912,6 +986,9 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
                 else
                 {
                     artilleryStrike(opponentBoard, row, col, shipsSunk);
+                    artilleryAvailable = 0; // Consume artillery move
+                    printf("Artillery move used. It is now unavailable.\n");
+
                     if (checkWin(opponentBoard))
                     {
                         printf("\n%s wins!\n", playerName);
@@ -928,7 +1005,7 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
         }
         else
         {
-            printf("Artillery not unlocked yet! Artillery is unlocked when you sink your opponent's ship.\n");
+            printf("Artillery not available. You need to sink a ship to unlock it.\n");
         }
         break;
     }
@@ -975,10 +1052,6 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
     return validMove;
 }
 
-Here’s the specification for the displayTurnInfo function:
-
-c
-Copy code
 // Requires:
 // - playerName is a valid string representing the current player’s name.
 // - opponentBoard is a 2D array of size GRID_SIZE x GRID_SIZE representing the opponent’s board.
@@ -1088,20 +1161,27 @@ void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShip
 }
 
 // Requires: 
-// - board is a valid 2D array of size GRID_SIZE x GRID_SIZE.
-// - row and col are valid indices within the range [0, GRID_SIZE - 1].
-// - shipsSunk is a valid pointer to an integer that tracks the number of ships sunk.
-// - showMisses is an integer flag indicating whether to display missed shots (1 = show, 0 = hide).
-// - GRID_SIZE is defined and greater than 0.
+// - `board` is a valid 2D array of size GRID_SIZE x GRID_SIZE representing the game board.
+// - `row` and `col` are valid indices within the range [0, GRID_SIZE - 1].
+// - `shipsSunk` is a valid pointer to an integer that tracks the number of ships sunk.
+// - `showMisses` is an integer flag indicating whether to display missed shots (1 = show, 0 = hide).
+// - `GRID_SIZE` is defined and greater than 0.
+// - The global variables `artilleryAvailable` and `torpedoAvailable` are properly initialized to 0 or 1.
 // - The function depends on a helper function `checkShipSunk()` to determine if a ship is sunk.
-// Effects: 
-// - Fires at the specified (row, col) location on the board.
-// - If the location is already marked as hit ('*') or missed ('o') and `showMisses` is 1, returns -1 to indicate invalid action.
-// - If the location is '~', it marks the cell as a miss ('o') and prints "Miss!".
-// - If the location contains a ship (any other character), marks the cell as hit ('*'), prints "Hit!", and checks if the ship is sunk:
-//   - If the ship is sunk, increments `shipsSunk`, prints the name of the sunk ship, and unlocks special moves:
-//     - Unlocks "Artillery" after sinking 1 ship.
-//     - Unlocks "Torpedo" after sinking 3 ships.
+// Effects:
+// - Fires at the specified (`row`, `col`) location on the `board`.
+// - If the location is already marked as hit ('*') or missed ('o') and `showMisses` is 1, the function returns -1 to indicate an invalid action.
+// - If the location is water ('~'), it marks the cell as a miss ('o') and prints "Miss!".
+// - If the location contains a ship (any other character), it:
+//   - Marks the cell as hit ('*').
+//   - Prints "Hit!".
+//   - Checks if the ship is sunk using `checkShipSunk()`:
+//     - If the ship is sunk, prints the name of the sunk ship and increments `*shipsSunk`.
+//     - Unlocks special moves based on the number of ships sunk:
+//       - Sets `artilleryAvailable` to 1 and prints "Artillery unlocked for your next turn!" if `*shipsSunk` is 1. (artillery move is unlocked once during the next turn of the 
+//         player who sinks the other player’s ship in the current turn.)
+//       - Sets `torpedoAvailable` to 1 and prints "Torpedo unlocked for your next turn!" if `*shipsSunk` is 3. (torpedo move is unlocked only once during the next turn of the player who sinks the
+//         other player’s third ship in the current turn.)
 // - Returns 1 if the shot is valid (hit or miss).
 int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int showMisses)
 {
@@ -1128,9 +1208,15 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, i
             (*shipsSunk)++;
 
             if (*shipsSunk == 1)
-                printf("Artillery unlocked!\n");
-            if (*shipsSunk >= 3)
-                printf("Torpedo unlocked!\n");
+            {
+                artilleryAvailable = 1;
+                printf("Artillery unlocked for your next turn!\n");
+            }
+            if (*shipsSunk == 3)
+            {
+                torpedoAvailable = 1;
+                printf("Torpedo unlocked for your next turn!\n");
+            }
         }
     }
 
