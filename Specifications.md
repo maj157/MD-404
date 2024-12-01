@@ -310,6 +310,34 @@ void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE]) {
     }
 }
 
+// Requires: 
+// - row and col are valid indices within the bounds of the grid (0 ≤ row, col < GRID_SIZE).
+// - neighbors is a 2D array of size 4x2 to store the coordinates of unvisited neighbors.
+// - megaBotShots is a 2D array representing the grid state, where 0 indicates unvisited cells.
+// - directions is a predefined array of size 4x2 that represents the four possible moves (up, down, left, right).
+// Effects: 
+// - Checks the four possible neighboring cells (up, down, left, right) of the given position (row, col).
+// - If a neighboring cell is within grid bounds and unvisited (megaBotShots[newRow][newCol] == 0),
+//   its coordinates are added to the `neighbors` array.
+// - Returns the number of valid unvisited neighbors found.
+int getUnvisitedNeighbors(int row, int col, int neighbors[4][2])
+{
+    int count = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        int newRow = row + directions[i][0];
+        int newCol = col + directions[i][1];
+        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
+        {
+            neighbors[count][0] = newRow;
+            neighbors[count][1] = newCol;
+            count++;
+        }
+    }
+    return count;
+}
+
+
 
 
 
