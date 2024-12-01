@@ -44,3 +44,20 @@ void initializeRadar(char radar[GRID_SIZE][GRID_SIZE]) {
         }
     }
 }
+
+// Requires: GRID_SIZE is a positive integer.
+//           player1SmokeEffectGrid and megaBotSmokeEffectGrid are 
+//           2D arrays of size GRID_SIZE x GRID_SIZE.
+// Effects: Initializes the smoke effect grids by setting all elements 
+//          in both player1SmokeEffectGrid and megaBotSmokeEffectGrid to 0.
+void initializeSmokeEffectGrid()
+{
+    for (int i = 0; i < GRID_SIZE; i++)
+    {
+        for (int j = 0; j < GRID_SIZE; j++)
+        {
+            player1SmokeEffectGrid[i][j] = 0; // Clear all smoke effects initially for Player
+            megaBotSmokeEffectGrid[i][j] = 0;
+        }
+    }
+}
