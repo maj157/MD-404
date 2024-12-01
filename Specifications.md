@@ -34,3 +34,13 @@ void initializeBoard(char board[GRID_SIZE][GRID_SIZE])
     }
 }
 
+// Requires: radar is a valid 2D array of size GRID_SIZE x GRID_SIZE.
+//           GRID_SIZE is defined and greater than 0.
+// Effects:  Sets every element in the radar array to '~', representing an unvisited state.
+void initializeRadar(char radar[GRID_SIZE][GRID_SIZE]) {
+    for (int i = 0; i < GRID_SIZE; i++) {
+        for (int j = 0; j < GRID_SIZE; j++) {
+            radar[i][j] = '~';
+        }
+    }
+}
