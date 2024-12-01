@@ -1437,6 +1437,30 @@ const char *checkShipSunk(char board[GRID_SIZE][GRID_SIZE], char shipChar) {
     }
 }
 
+// Requires:
+// - board is a 2D array of size GRID_SIZE x GRID_SIZE representing the game board.
+//   - '~' represents an empty cell, '*' represents a hit ship segment, 'o' represents a missed shot, 
+//     and other characters represent parts of ships.
+// Effects:
+// - Iterates through the entire game board to check for the presence of any remaining ship segments.
+// - If no ship segments are found (all cells are either '~', '*', or 'o'), returns 1, indicating a win.
+// - If at least one ship segment is found, returns 0, indicating that the game is still ongoing.
+int checkWin(char board[GRID_SIZE][GRID_SIZE])
+{
+    for (int i = 0; i < GRID_SIZE; i++)
+    {
+        for (int j = 0; j < GRID_SIZE; j++)
+        {
+            // Check if any ships remain on the board
+            if (board[i][j] != '~' && board[i][j] != '*' && board[i][j] != 'o')
+            {
+                return 0; 
+            }
+        }
+    }
+    return 1;
+}
+
 
 
 
