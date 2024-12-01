@@ -1134,6 +1134,70 @@ int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, i
     return 1;
 }
 
+// Requires:
+// - board is a 2D array of size GRID_SIZE x GRID_SIZE representing the state of the game board.
+//   - '~' represents an empty cell, '*' represents a hit ship segment, 'o' represents a missed shot, 
+//     and other characters represent parts of ships.
+// - radar is a 2D array of size GRID_SIZE x GRID_SIZE representing the radar's scanned state.
+// - row and col are valid indices within the bounds of the grid (0 ≤ row, col < GRID_SIZE).
+// - player is an integer indicating the current player (1 for Player 1, any other value for Player 2/megaBot).
+// Effects:
+// - Performs a radar sweep over a 2x2 grid area starting at the specified (row, col).
+// - Checks for the presence of smoke effects in the specified 2x2 area:
+//   - If smoke is detected, clears the smoke effect in the 2x2 area for the current player and prints "No enemy ships found."
+//   - If no smoke is detected, scans for enemy ships (cells that are neither '~', '*', nor 'o') in the 2x2 area.
+// - Prints "Enemy ships found!" if at least one ship segment is detected, otherwise prints "No enemy ships found."
+// - Returns 1 if an enemy ship is found, 0 otherwise.
+int radarSweep(char board[GRID_SIZE][GRID_SIZE], char radar[GRID_SIZE][GRID_SIZE], int row, int col, int player)
+{
+    int foundShip = 0;
+    int smokeDetected = 0;
+
+    // Select the opponent's smoke effect grid based on the current player
+    int(*smokeEffectGrid)[GRID_SIZE] = (player == 1) ? megaBotSmokeEffectGrid : player1SmokeEffectGrid;
+
+    for (int i = row; i < row + 2 && i < GRID_SIZE; i++)
+    {
+        for (int j = col; j < col + 2 && j < GRID_SIZE; j++)
+        {
+            // Check if the cell is currently smoked on the opponent's radar
+            if (smokeEffectGrid[i][j] == 1)
+            {
+                smokeDetected = 1;
+            }
+            else if (board[i][j] != '~' && board[i][j] != '*' && board[i][j] != 'o')
+            {
+                foundShip = 1; // Ship detected in non-smoked area
+            }
+        }
+    }
+
+    if (smokeDetected)
+    {
+        // Clear the smoke effect in the 2x2 area after it blocks this radar sweep for this player
+        for (int i = row; i < row + 2 && i < GRID_SIZE; i++)
+        {
+            for (int j = col; j < col + 2 && j < GRID_SIZE; j++)
+            {
+                smokeEffectGrid[i][j] = 0; // Remove smoke effect for future sweeps
+            }
+        }
+        printf("No enemy ships found.\n");
+        return 0;
+    }
+
+    if (foundShip)
+    {
+        printf("Enemy ships found!\n");
+    }
+    else
+    {
+        printf("No enemy ships found.\n");
+    }
+
+    return foundShip;
+}
+
 
 
 
