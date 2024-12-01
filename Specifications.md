@@ -1330,6 +1330,77 @@ int artilleryStrike(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shi
     return 1;
 }
 
+// Requires:
+// - board is a 2D array of size GRID_SIZE x GRID_SIZE representing the game board.
+//   - '~' represents an empty cell, '*' represents a hit ship segment, 'o' represents a missed shot, 
+//     and other characters represent parts of ships.
+// - target is a character representing the row or column to attack:
+//   - 'A' to 'J' (uppercase only) for a column attack. The input is **case-sensitive** and must be uppercase.
+//   - '1' to '9' or '0' for a row attack ('0' represents row 10).
+// Effects:
+// - If `target` is an uppercase column letter ('A' to 'J'):
+//   - Attacks all cells in the specified column.
+//   - Marks hits ('*') for any ship segment encountered and prints the position of each hit.
+//   - Marks misses ('o') for empty cells.
+// - If `target` is a row ('1' to '9' or '0'):
+//   - Attacks all cells in the specified row.
+//   - Marks hits ('*') for any ship segment encountered and prints the position of each hit.
+//   - Marks misses ('o') for empty cells.
+// - If no ship segments are hit in the specified row or column, prints "Miss."
+// - The function assumes that the `target` input is **case-sensitive**. Lowercase letters ('a' to 'j') are not valid
+//   inputs for column attacks and will result in undefined behavior.
+void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target)
+{
+    int index;
+    bool hit = false;
+
+    if (target >= 'A' && target <= 'J') // Column attack
+    {
+        index = target - 'A'; // Convert column letter to index
+        for (int i = 0; i < GRID_SIZE; i++)
+        {
+            if (board[i][index] != '*' && board[i][index] != 'o')
+            {
+                if (board[i][index] != '~')
+                {
+                    printf("Hit at row %d, column %c\n", i + 1, target);
+                    board[i][index] = '*';
+                    hit = true;
+                }
+                else
+                {
+                    board[i][index] = 'o';
+                }
+            }
+        }
+    }
+    else if ((target >= '1' && target <= '9') || target == '0') // Row attack
+    {
+        index = (target == '0') ? 9 : target - '1'; // Handle row 10 ('0')
+        for (int i = 0; i < GRID_SIZE; i++)
+        {
+            if (board[index][i] != '*' && board[index][i] != 'o')
+            {
+                if (board[index][i] != '~')
+                {
+                    printf("Hit at row %d, column %c\n", index + 1, 'A' + i);
+                    board[index][i] = '*';
+                    hit = true;
+                }
+                else
+                {
+                    board[index][i] = 'o';
+                }
+            }
+        }
+    }
+
+    if (!hit)
+    {
+        printf("Miss\n");
+    }
+}
+
 
 
 
