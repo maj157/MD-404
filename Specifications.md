@@ -1401,6 +1401,42 @@ void torpedoAttack(char board[GRID_SIZE][GRID_SIZE], char target)
     }
 }
 
+// Requires:
+// - board is a valid 2D array of size GRID_SIZE x GRID_SIZE.
+// - shipChar is a valid character representing a ship ('C', 'B', 'D', or 'S').
+// - GRID_SIZE is defined and greater than 0.
+// Effects:
+// - Iterates through the entire `board` to check if any cell contains `shipChar`.
+// - If any cell still contains `shipChar`, the function returns `NULL`, indicating the ship is not sunk.
+// - If no cells contain `shipChar`, the function determines which ship it represents and returns its name as a string:
+//   - 'C' -> "Carrier"
+//   - 'B' -> "Battleship"
+//   - 'D' -> "Destroyer"
+//   - 'S' -> "Submarine"
+// - If `shipChar` does not match any known ship, the function returns `NULL`.
+const char *checkShipSunk(char board[GRID_SIZE][GRID_SIZE], char shipChar) {
+    for (int i = 0; i < GRID_SIZE; i++) {
+        for (int j = 0; j < GRID_SIZE; j++) {
+            if (board[i][j] == shipChar) {
+                return NULL;
+            }
+        }
+    }
+
+    switch (shipChar) {
+    case 'C':
+        return "Carrier";
+    case 'B':
+        return "Battleship";
+    case 'D':
+        return "Destroyer";
+    case 'S':
+        return "Submarine";
+    default:
+        return NULL;
+    }
+}
+
 
 
 
