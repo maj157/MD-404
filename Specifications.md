@@ -126,5 +126,132 @@ void placeFleet(char board[GRID_SIZE][GRID_SIZE], const char *playerName) {
     clearScreen();
 }
 
+// Requires: 
+// - board is a 2D array of size GRID_SIZE x GRID_SIZE.
+// - shipSize is a positive integer representing the size of the ship.
+// - shipName is a valid string representing the name of the ship.
+// - playerName is a valid string representing the player's name.
+// - shipInitial is a valid character representing the initial of the ship.
+// Effects: 
+// - Prompts the player to enter the starting position (row and column) and orientation (horizontal or vertical)
+//   for placing the ship.
+// - Validates the input to ensure the ship fits within the grid and does not overlap with other ships.
+// - Places the ship on the board using the given shipInitial if the placement is valid.
+// - Returns 1 if the ship is successfully placed, otherwise prompts the user to re-enter the details.
+int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipName, const char *playerName, char shipInitial)
+{
+    int row;
+    char col;
+    char orientation[20];
+
+    while (1)
+    {
+
+        printf("%s, placing your %s (size %d):\n", playerName, shipName, shipSize);
+        printf("%s, enter starting position (row column, e.g., 3 B): ", playerName);
+        if (scanf("%d %c", &row, &col) != 2)
+        {
+            printf("Invalid input. Try again.\n");
+            clearInputBuffer();
+            continue;
+        }
+        clearInputBuffer();
+
+        col = toupper(col) - 'A';
+        row--;
+
+        int validPlacement = 1;
+
+        if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE)
+        {
+            printf("Error: Invalid starting position for %s. Row or column out of bounds.\n", shipName);
+            continue;
+        }
+
+        printf("Enter orientation (horizontal or vertical): ");
+        scanf("%19s", orientation); // Limit input to avoid buffer overflow
+        clearInputBuffer();
+
+        for (int i = 0; orientation[i]; i++)
+        {
+            orientation[i] = tolower(orientation[i]);
+        }
+
+        // Check if the ship can be placed within the grid boundaries
+        if (strcmp(orientation, "horizontal") == 0)
+        {
+            // Horizontal: check if ship fits within the row
+            if (col + shipSize > GRID_SIZE)
+            {
+                printf("Error: Ship placement exceeds grid boundaries horizontally. Try again.\n");
+                validPlacement = 0;
+            }
+            else
+            {
+                // Check for overlapping ships
+                for (int i = 0; i < shipSize; i++)
+                {
+                    if (board[row][col + i] != '~')
+                    {
+                        printf("Error: Ship overlaps with another ship at row %d and column %c. Try again.\n", row + 1, 'A' + col + i);
+                        validPlacement = 0;
+                        break;
+                    }
+                }
+            }
+        }
+        else if (strcmp(orientation, "vertical") == 0)
+        {
+            // Vertical: check if ship fits within the column
+            if (row + shipSize > GRID_SIZE)
+            {
+                printf("Error: Ship placement exceeds grid boundaries vertically. Try again.\n");
+                validPlacement = 0;
+            }
+            else
+            {
+                // Check for overlapping ships
+                for (int i = 0; i < shipSize; i++)
+                {
+                    if (board[row + i][col] != '~')
+                    {
+                        printf("Error: Ship overlaps with another ship at row %d and column %c. Try again.\n", row + 1 + i, 'A' + col);
+                        validPlacement = 0;
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            printf("Invalid orientation. Try again.\n");
+            continue;
+        }
+
+        if (validPlacement)
+        {
+            printf("%s placed successfully!\n\n", shipName);
+            if (strcmp(orientation, "horizontal") == 0)
+            {
+                for (int i = 0; i < shipSize; i++)
+                {
+                    board[row][col + i] = shipInitial;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < shipSize; i++)
+                {
+                    board[row + i][col] = shipInitial;
+                }
+            }
+            displayBoard(board, 1, 0);
+            break;
+        }
+    }
+    return 1;
+}
+
+
 
 
