@@ -377,6 +377,39 @@ int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SI
     return 1;
 }
 
+// Requires: row and col are valid indices within the range [0, GRID_SIZE - 1].
+//           opponentBoard is a valid 2D array of size GRID_SIZE x GRID_SIZE, representing the opponent's board.
+//           artilleryHits is a valid 2D array of size 4x2, used to store the coordinates of artillery hits.
+//           The function depends on a helper function `enqueueNeighbor(int, int)` for queuing valid neighboring cells.
+//           GRID_SIZE is defined and greater than 0.
+// Effects:  Processes a 2x2 block on the opponent's board starting at (row, col).
+//           - Records the coordinates of cells within the block that are hits (not '~' or 'o') in the artilleryHits array.
+//           - Calls `enqueueNeighbor` for valid unvisited hits (cells not marked as '*').
+//           - Ensures no out-of-bounds access by checking indices against grid boundaries.
+//           - Returns the total number of hits found in the 2x2 block.
+int processArtilleryHits(int row, int col, char opponentBoard[GRID_SIZE][GRID_SIZE], int artilleryHits[4][2]) {
+    int hitCount = 0;
+    for (int i = row; i <= row + 1; i++) { // Check 2x2 block
+        for (int j = col; j <= col + 1; j++) {
+            if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE) {
+                if (opponentBoard[i][j] != '~' && opponentBoard[i][j] != 'o') {
+                    artilleryHits[hitCount][0] = i;
+                    artilleryHits[hitCount][1] = j;
+                    hitCount++;
+
+                    // Only enqueue valid neighbors of unvisited hits
+                    if (opponentBoard[i][j] != '*') {
+                        enqueueNeighbor(i, j);
+                    }
+                }
+            }
+        }
+    }
+
+    return hitCount;
+}
+
+
 
 
 
