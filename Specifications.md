@@ -353,6 +353,31 @@ void markArtilleryImpact(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE
     }
 }
 
+// Requires: 
+// - row and col are valid indices within the bounds of the grid (0 ≤ row, col < GRID_SIZE).
+// - megaBotShots is a 2D array of size GRID_SIZE x GRID_SIZE representing the grid state, 
+//   where 1 indicates a visited cell and 0 indicates an unvisited cell.
+// Effects: 
+// - Checks a 2x2 block of cells starting at the specified (row, col) position.
+// - Returns 0 if any cell in the block is visited (megaBotShots[i][j] == 1), and 1 if all cells in the block are unvisited.
+// - Ensures all cells in the 2x2 block are within grid boundaries before validation.
+int isArtilleryTargetValid(int row, int col, int megaBotShots[GRID_SIZE][GRID_SIZE])
+{
+    for (int i = row; i <= row + 1; i++)
+    {
+        for (int j = col; j <= col + 1; j++)
+        {
+            if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE)
+            {
+                if (megaBotShots[i][j] == 1) // Any cell in the block is visited
+                    return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+
 
 
 
