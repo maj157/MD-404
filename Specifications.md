@@ -749,13 +749,13 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
 // - The function depends on helper functions:
 //   - `clearInputBuffer()` for clearing the input buffer.
 //   - `getCommandCode()` for translating user commands into codes.
-//   - `fireAt()`, `torpedoAttack()`, `radarSweep()`, `artilleryStrike()`, and `applySmokeScreen()` for handling specific commands.
+//   - `fireAt()`, `torpedoAttack()`, `radarSweep()`, `artilleryStrike()`, and `applySmokeScreen()` for handling moves.
 //   - `checkWin()` and `checkShipSunk()` for game state checks.
 // Effects: 
 // - Prompts the player to enter a command ('fire', 'radar', 'artillery', 'torpedo', or 'smoke').
 // - Executes the corresponding action based on the command entered:
 //   - **Fire**: Attempts to fire at specified coordinates on the opponent's board. Updates `shipsSunk`, checks for game-over state, and prints results.
-//   - **Torpedo**: If unlocked (requires sinking 3 ships), attacks a row or column of the opponent's board.
+//   - Torpedo: If unlocked (requires sinking 3 ships), attacks a row or column of the opponent's board.
 //   - **Radar**: If available (maximum of 3 uses), performs a radar sweep and updates `radarCount`.
 //   - **Artillery**: If unlocked (requires sinking 1 ship), performs an artillery strike on a 2x2 block on the opponent's board.
 //   - **Smoke**: If unlocked (requires sinking at least 1 ship), applies a smoke screen at specified coordinates on the player’s radar.
@@ -1016,6 +1016,28 @@ void displayTurnInfo(const char *playerName, char opponentBoard[GRID_SIZE][GRID_
         printf("\n");
     }
 }
+
+// Requires: 
+// - command is a valid, null-terminated string.
+// Effects: 
+// - Compares the input string `command` against predefined valid commands: "fire", "torpedo", "radar", "artillery", and "smoke".
+// - Returns:
+//   - 1,2,3,4,5 if `command` matches "fire", "torpedo", "radar", "artillery", "smoke", respectively.
+//   - 0 if `command` does not match any valid command.
+int getCommandCode(const char *command) {
+    if (strcmp(command, "fire") == 0)
+        return 1;
+    if (strcmp(command, "torpedo") == 0)
+        return 2;
+    if (strcmp(command, "radar") == 0)
+        return 3;
+    if (strcmp(command, "artillery") == 0)
+        return 4;
+    if (strcmp(command, "smoke") == 0)
+        return 5;
+    return 0; // Invalid command
+}
+
 
 
 
