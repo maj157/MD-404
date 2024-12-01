@@ -252,6 +252,65 @@ int placeShip(char board[GRID_SIZE][GRID_SIZE], int shipSize, const char *shipNa
     return 1;
 }
 
+// Requires: board is a valid 2D array of size GRID_SIZE x GRID_SIZE.
+//           GRID_SIZE is defined and greater than 0.
+//           Each cell of the board is initialized to '~', representing an empty state.
+// Effects:  Places four ships (Carrier, Battleship, Destroyer, Submarine) on the board for MegaBot.
+//           Ship sizes are 5, 4, 3, and 2 cells, respectively, and are represented by 'C', 'B', 'D', and 'S'.
+//           Ships are placed randomly, with a 70% chance to prioritize central positions.
+//           Ensures no overlaps between ships and that all ships fit within the board boundaries.
+void megaBotPlaceShips(char board[GRID_SIZE][GRID_SIZE]) {
+    const int shipSizes[] = {5, 4, 3, 2};
+    const char shipChars[] = {'C', 'B', 'D', 'S'};
+
+    for (int i = 0; i < 4; i++) {
+        int placed = 0;
+        while (!placed) {
+            int prioritizeCenter = rand() % 100 < 70; // 70% chance to prioritize central placement
+            int row = prioritizeCenter ? (rand() % (GRID_SIZE / 2)) + GRID_SIZE / 4 : rand() % GRID_SIZE;
+            int col = prioritizeCenter ? (rand() % (GRID_SIZE / 2)) + GRID_SIZE / 4 : rand() % GRID_SIZE;
+            int horizontal = rand() % 2; // 0 = vertical, 1 = horizontal
+            placed = 1;
+
+            // Check placement boundaries and overlaps
+            if (horizontal) {
+                if (col + shipSizes[i] > GRID_SIZE) {
+                    placed = 0;
+                } else {
+                    for (int j = 0; j < shipSizes[i]; j++) {
+                        if (board[row][col + j] != '~') {
+                            placed = 0;
+                            break;
+                        }
+                    }
+                    if (placed) {
+                        for (int j = 0; j < shipSizes[i]; j++) {
+                            board[row][col + j] = shipChars[i];
+                        }
+                    }
+                }
+            } else {
+                if (row + shipSizes[i] > GRID_SIZE) {
+                    placed = 0;
+                } else {
+                    for (int j = 0; j < shipSizes[i]; j++) {
+                        if (board[row + j][col] != '~') {
+                            placed = 0;
+                            break;
+                        }
+                    }
+                    if (placed) {
+                        for (int j = 0; j < shipSizes[i]; j++) {
+                            board[row + j][col] = shipChars[i];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 
 
 
