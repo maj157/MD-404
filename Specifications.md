@@ -520,6 +520,66 @@ int checkerboard(char opponentBoard[GRID_SIZE][GRID_SIZE], int megaBotShots[GRID
     return 0; // No move made
 }
 
+// Requires:
+// - opponentBoard is a 2D array of size GRID_SIZE x GRID_SIZE representing the opponent's board.
+//   - '~' indicates an empty cell, 'o' indicates a missed shot, '*' indicates a hit ship segment, 
+//     and other characters represent ship parts.
+// - shipsSunk is a pointer to an integer tracking the number of ships sunk by megaBot.
+// - gameOver is a pointer to an integer indicating whether the game is over (1 for game over, 0 otherwise).
+// Effects:
+// - Executes megaBot's turn, prioritizing moves in the following order:
+//   1. Fires at unresolved neighboring cells from a queue if any exist.
+//   2. Uses torpedo attack if unlocked (after sinking 3 ships) and no unresolved neighbors remain.
+//   3. Follows up on consecutive hits for focused sinking of a ship if a previous hit exists.
+//   4. Uses artillery strike if unlocked (after sinking 1 ship) and no focused sinking is active.
+//   5. Performs checkerboard firing as a default search mechanism if no higher priority action is available.
+// - Updates the opponent's board and megaBot's shot tracking grid (megaBotShots).
+// - Tracks successful hits and sinks ships by checking neighboring cells and processing focused sinking if needed.
+// - Unlocks special attacks (torpedo and artillery) based on the number of ships sunk.
+// - Checks for a win after each move and sets *gameOver to 1 if all ships are sunk.
+// - Returns early if a win condition is detected or a prioritized action is completed.
+void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, int *gameOver)
+{
+    static int lastHitRow = -1, lastHitCol = -1; // Track the last successful hit
+    static int direction = -1;                   // Track the current direction: 0 = up, 1 = down, 2 = left, 3 = right
+    static int artilleryUnlocked = 0;
+    static int torpedoUnlocked = 0;
+    static int torpedoedRows[GRID_SIZE] = {0}; // Track rows targeted by torpedo (0 = not targeted, 1 = targeted)
+
+    if (*shipsSunk >= 3)
+        torpedoUnlocked = 1; // Unlock torpedo after sinking 3 ships
+    else if (*shipsSunk >= 1)
+        artilleryUnlocked = 1; // Unlock artillery after sinking 1 ship
+
+    // Priority 1: Process unresolved neighbors from the queue
+    if (!isNeighborQueueEmpty())
+    {
+        // Execute actions based on unresolved neighbors
+    }
+
+    // Priority 2: Use Torpedo if Unlocked and Queue is Empty
+    if (torpedoUnlocked)
+    {
+        // Execute torpedo attack if applicable
+    }
+
+    // Priority 3: Follow Consecutive Hits
+    if (lastHitRow != -1 && lastHitCol != -1)
+    {
+        // Execute focused sinking for consecutive hits
+    }
+
+    // Priority 4: Use Artillery if Unlocked
+    if (artilleryUnlocked)
+    {
+        // Execute artillery strike if applicable
+    }
+
+    // Priority 5: Checkerboard Firing (Default Search)
+    if (checkerboard(opponentBoard, megaBotShots, shipsSunk, gameOver, &lastHitRow, &lastHitCol, &direction))
+        return; 
+}
+
 
 
 
