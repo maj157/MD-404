@@ -972,6 +972,51 @@ int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRI
     return validMove;
 }
 
+Here’s the specification for the displayTurnInfo function:
+
+c
+Copy code
+// Requires:
+// - playerName is a valid string representing the current player’s name.
+// - opponentBoard is a 2D array of size GRID_SIZE x GRID_SIZE representing the opponent’s board.
+//   - '~' indicates an empty cell, 'o' indicates a missed shot, '*' indicates a hit ship segment, 
+//     and other characters represent ship parts.
+// - showMisses is a flag (integer) where 1 enables showing missed shots ('o') and 0 hides them.
+// - shipsSunk is an integer representing the number of ships sunk by the current player.
+// Effects:
+// - Displays the turn information for the specified player:
+//   - Prints a message indicating it is the player’s turn to play.
+//   - If the player is not "megaBot", displays the opponent’s board using `displayBoard()` 
+//     with options to show or hide missed shots based on the `showMisses` flag.
+//   - If the player is not "megaBot", prints a list of available moves based on the number of ships sunk:
+//     - Default moves: "Fire", "Radar"
+//     - Additional moves unlocked:
+//       - "Torpedo" after sinking 3 ships.
+//       - "Artillery" after sinking 1 ship.
+//       - "Smoke" after sinking at least 1 ship.
+void displayTurnInfo(const char *playerName, char opponentBoard[GRID_SIZE][GRID_SIZE], int showMisses, int shipsSunk)
+{
+    printf("\n%s's turn to play!\n", playerName);
+
+    if (strcmp(playerName, "megaBot") != 0)
+    {
+        displayBoard(opponentBoard, showMisses, 1);
+    }
+
+    // Display available moves for Player 1
+    if (strcmp(playerName, "megaBot") != 0)
+    {
+        printf("Available moves: Fire, Radar");
+        if (shipsSunk >= 3)
+            printf(", Torpedo");
+        if (shipsSunk >= 1)
+            printf(", Artillery");
+        if (shipsSunk > 0)
+            printf(", Smoke");
+        printf("\n");
+    }
+}
+
 
 
 
