@@ -554,32 +554,423 @@ void megaBotMakeMove(char opponentBoard[GRID_SIZE][GRID_SIZE], int *shipsSunk, i
     // Priority 1: Process unresolved neighbors from the queue
     if (!isNeighborQueueEmpty())
     {
-        // Execute actions based on unresolved neighbors
+        Cell nextTarget = dequeueNeighbor();
+        int row = nextTarget.row;
+        int col = nextTarget.col;
+
+        if (opponentBoard[row][col] == '*' || opponentBoard[row][col] == 'o')
+        {
+            return;
+        }
+
+        // Fire at this neighbor
+        printf("megaBot fires at %d%c (from queue)\n", row + 1, 'A' + col);
+        if (opponentBoard[row][col] != '~')
+        {
+            printf("Hit!\n");
+            char shipChar = opponentBoard[row][col];
+            opponentBoard[row][col] = '*';
+            lastHitRow = row;
+            lastHitCol = col;
+
+            // Switch to focused sinking for this new ship
+            if (direction == -1)
+            {
+                if (row > 0 && megaBotShots[row - 1][col] == 0)
+                    direction = 0;
+                else if (row < GRID_SIZE - 1 && megaBotShots[row + 1][col] == 0)
+                    direction = 1;
+                else if (col > 0 && megaBotShots[row][col - 1] == 0)
+                    direction = 2;
+                else if (col < GRID_SIZE - 1 && megaBotShots[row][col + 1] == 0)
+                    direction = 3;
+            }
+
+            const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
+            if (sunkShip != NULL)
+            {
+                printf("megaBot sunk the %s!\n", sunkShip);
+                (*shipsSunk)++;
+                lastHitRow = -1;
+                lastHitCol = -1;
+                direction = -1;
+            }
+        }
+        else
+        {
+            printf("Miss!\n");
+            opponentBoard[row][col] = 'o';
+        }
+
+        if (checkWin(opponentBoard))
+        {
+            printf("megaBot wins!\n");
+            *gameOver = 1;
+        }
+        megaBotShots[row][col] = 1;
+        return;
     }
 
     // Priority 2: Use Torpedo if Unlocked and Queue is Empty
     if (torpedoUnlocked)
     {
-        // Execute torpedo attack if applicable
+        for (int row = 0; row < GRID_SIZE; row++)
+        {
+            if (torpedoedRows[row] == 0)
+            {
+                printf("megaBot uses torpedo on row %d\n", row + 1);
+                torpedoAttack(opponentBoard, '1' + row);
+                torpedoedRows[row] = 1;
+
+                if (checkWin(opponentBoard))
+                {
+                    printf("megaBot wins!\n");
+                    *gameOver = 1;
+                    return;
+                }
+                return;
+            }
+        }
     }
 
     // Priority 3: Follow Consecutive Hits
     if (lastHitRow != -1 && lastHitCol != -1)
     {
-        // Execute focused sinking for consecutive hits
+        int newRow = lastHitRow, newCol = lastHitCol;
+
+        // Determine next cell based on direction
+        if (direction == 0)
+            newRow--;
+        else if (direction == 1)
+            newRow++;
+        else if (direction == 2)
+            newCol--;
+        else if (direction == 3)
+            newCol++;
+
+        if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && megaBotShots[newRow][newCol] == 0)
+        {
+            printf("megaBot fires at %d%c (focused sinking)\n", newRow + 1, 'A' + newCol);
+
+            if (opponentBoard[newRow][newCol] != '~')
+            {
+                printf("Hit!\n");
+                char shipChar = opponentBoard[newRow][newCol];
+                opponentBoard[newRow][newCol] = '*';
+                lastHitRow = newRow;
+                lastHitCol = newCol;
+
+                const char *sunkShip = checkShipSunk(opponentBoard, shipChar);
+                if (sunkShip != NULL)
+                {
+                    printf("megaBot sunk the %s!\n", sunkShip);
+                    (*shipsSunk)++;
+                    lastHitRow = -1;
+                    lastHitCol = -1;
+                    direction = -1;
+                }
+            }
+            else
+            {
+                printf("Miss!\n");
+                opponentBoard[newRow][newCol] = 'o';
+                direction = -1;
+            }
+
+            if (checkWin(opponentBoard))
+            {
+                printf("megaBot wins!\n");
+                *gameOver = 1;
+            }
+            megaBotShots[newRow][newCol] = 1;
+            return;
+        }
+        else
+        {
+            direction = -1;
+        }
     }
 
     // Priority 4: Use Artillery if Unlocked
     if (artilleryUnlocked)
     {
-        // Execute artillery strike if applicable
-    }
+        for (int row = 0; row < GRID_SIZE - 1; row += 2)
+        {
+            for (int col = 0; col < GRID_SIZE - 1; col += 2)
+            {
+                if (isArtilleryTargetValid(row, col, megaBotShots))
+                {
+                    printf("megaBot uses artillery at %d%c\n", row + 1, 'A' + col);
+                    artilleryStrike(opponentBoard, row, col, shipsSunk);
+                    markArtilleryImpact(row, col, megaBotShots);
 
+                    // Process hits in the 2x2 area
+                    int artilleryHits[4][2];
+                    int hitCount = processArtilleryHits(row, col, opponentBoard, artilleryHits);
+
+                    // Enqueue valid neighbors of each hit
+                    for (int i = 0; i < hitCount; i++)
+                    {
+                        int hitRow = artilleryHits[i][0];
+                        int hitCol = artilleryHits[i][1];
+
+                        for (int d = 0; d < 4; d++)
+                        {
+                            int newRow = hitRow + directions[d][0];
+                            int newCol = hitCol + directions[d][1];
+
+                            if (newRow >= 0 && newRow < GRID_SIZE &&
+                                newCol >= 0 && newCol < GRID_SIZE &&
+                                opponentBoard[newRow][newCol] != '*' &&
+                                opponentBoard[newRow][newCol] != 'o' &&
+                                megaBotShots[newRow][newCol] == 0)
+                            {
+                                enqueueNeighbor(newRow, newCol);
+                            }
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+    }
     // Priority 5: Checkerboard Firing (Default Search)
     if (checkerboard(opponentBoard, megaBotShots, shipsSunk, gameOver, &lastHitRow, &lastHitCol, &direction))
         return; 
+
 }
 
+// Requires: 
+// - player is a valid player identifier.
+// - playerName is a valid, null-terminated string with a maximum length of 50 characters.
+// - opponentBoard and playerRadar are valid 2D arrays of size GRID_SIZE x GRID_SIZE.
+// - shipsSunk, smokeUsed, radarCount, showMisses, and gameOver are valid pointers to integers.
+// - GRID_SIZE is defined and greater than 0.
+// - The function depends on helper functions:
+//   - `clearInputBuffer()` for clearing the input buffer.
+//   - `getCommandCode()` for translating user commands into codes.
+//   - `fireAt()`, `torpedoAttack()`, `radarSweep()`, `artilleryStrike()`, and `applySmokeScreen()` for handling specific commands.
+//   - `checkWin()` and `checkShipSunk()` for game state checks.
+// Effects: 
+// - Prompts the player to enter a command ('fire', 'radar', 'artillery', 'torpedo', or 'smoke').
+// - Executes the corresponding action based on the command entered:
+//   - **Fire**: Attempts to fire at specified coordinates on the opponent's board. Updates `shipsSunk`, checks for game-over state, and prints results.
+//   - **Torpedo**: If unlocked (requires sinking 3 ships), attacks a row or column of the opponent's board.
+//   - **Radar**: If available (maximum of 3 uses), performs a radar sweep and updates `radarCount`.
+//   - **Artillery**: If unlocked (requires sinking 1 ship), performs an artillery strike on a 2x2 block on the opponent's board.
+//   - **Smoke**: If unlocked (requires sinking at least 1 ship), applies a smoke screen at specified coordinates on the player’s radar.
+// - Handles invalid inputs by printing error messages and may forfeit the player's turn.
+// - Checks for game-over state after each valid command and sets `*gameOver` to 1 if the game is won.
+// - Returns 1 if a valid move is executed, 0 otherwise.
+int executePlayerCommand(int player, char playerName[50], char opponentBoard[GRID_SIZE][GRID_SIZE],
+                         char playerRadar[GRID_SIZE][GRID_SIZE],
+                         int *shipsSunk, int *smokeUsed, int *radarCount, int showMisses, int *gameOver)
+{
+    int validMove = 0;
+    char command[10];
+    printf("Enter 'fire', 'radar', 'artillery', 'torpedo', or 'smoke': ");
+    scanf("%9s", command);
+    clearInputBuffer();
+
+    int lostTurn = 0; // Reset lostTurn flag before each action
+    int commandCode = getCommandCode(command);
+
+    switch (commandCode)
+    {
+    case 1: // Fire
+    {
+        int row;
+        char col;
+        printf("Enter coordinates to fire (row column, e.g., 3 B): ");
+
+        if (scanf("%d %c", &row, &col) == 2)
+        {
+            clearInputBuffer();
+            col = toupper(col) - 'A';
+            row--;
+
+            if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE)
+            {
+                printf("Invalid coordinates. You lost your turn!\n");
+                validMove = 1;
+            }
+            else
+            {
+                int fireResult = fireAt(opponentBoard, row, col, shipsSunk, showMisses);
+                if (fireResult == 1 || (fireResult == -1 && showMisses == 0))
+                {
+                    validMove = 1;
+                    if (checkWin(opponentBoard))
+                    {
+                        printf("\n%s wins!\n", playerName);
+                        *gameOver = 1;
+                    }
+                }
+                else if (fireResult == -1 && showMisses == 1)
+                {
+                    printf("Already fired at this location. Try again.\n");
+                }
+            }
+        }
+        else
+        {
+            printf("Invalid input. Try again.\n");
+            clearInputBuffer();
+        }
+        break;
+    }
+    case 2: // Torpedo
+    {
+        if (*shipsSunk >= 3)
+        {
+            char target;
+            printf("Enter a column (A-J) or row (1-10) for torpedo attack: ");
+            scanf(" %c", &target);
+            clearInputBuffer();
+
+            if ((target >= 'A' && target <= 'J') || (target >= '1' && target <= '9') || target == '0')
+            {
+                torpedoAttack(opponentBoard, target);
+                if (checkWin(opponentBoard))
+                {
+                    printf("\n%s wins!\n", playerName);
+                    *gameOver = 1;
+                }
+                validMove = 1;
+            }
+            else
+            {
+                printf("Invalid coordinates. You lost your turn!\n");
+                validMove = 1;
+            }
+        }
+        else
+        {
+            printf("Torpedo not unlocked. You need to sink 3 ships to unlock it.\n");
+        }
+        break;
+    }
+    case 3: // Radar
+    {
+        if (*radarCount >= 3)
+        {
+            printf("You have already used all 3 radar sweeps and lost your turn.\n");
+            validMove = 1; // Turn is lost if all radar sweeps are used
+        }
+        else
+        {
+            int row;
+            char col;
+            printf("Enter top-left coordinates for radar sweep (row column, e.g., 3 B): ");
+            if (scanf("%d %c", &row, &col) == 2)
+            {
+                clearInputBuffer();
+                col = toupper(col) - 'A';
+                row--;
+
+                if (row < 0 || row >= GRID_SIZE - 1 || col < 0 || col >= GRID_SIZE - 1)
+                {
+                    printf("Invalid coordinates. You lost your turn!\n");
+                    validMove = 1;
+                }
+                else
+                {
+                    radarSweep(opponentBoard, playerRadar, row, col, player);
+                    (*radarCount)++;
+                    validMove = 1;
+                }
+            }
+            else
+            {
+                printf("Invalid input. Try again.\n");
+                clearInputBuffer();
+            }
+        }
+        break;
+    }
+    case 4: // Artillery
+    {
+        if (*shipsSunk >= 1)
+        {
+            int row;
+            char col;
+            printf("Enter top-left coordinates for artillery strike (row column, e.g., 3 B): ");
+            if (scanf("%d %c", &row, &col) == 2)
+            {
+                clearInputBuffer();
+                col = toupper(col) - 'A';
+                row--;
+
+                if (row < 0 || row >= GRID_SIZE - 1 || col < 0 || col >= GRID_SIZE - 1)
+                {
+                    printf("Invalid coordinates. You lost your turn!\n");
+                    validMove = 1;
+                }
+                else
+                {
+                    artilleryStrike(opponentBoard, row, col, shipsSunk);
+                    if (checkWin(opponentBoard))
+                    {
+                        printf("\n%s wins!\n", playerName);
+                        *gameOver = 1;
+                    }
+                    validMove = 1;
+                }
+            }
+            else
+            {
+                printf("Invalid input. Try again.\n");
+                clearInputBuffer();
+            }
+        }
+        else
+        {
+            printf("Artillery not unlocked yet! Artillery is unlocked when you sink your opponent's ship.\n");
+        }
+        break;
+    }
+    case 5: // Smoke
+    {
+        if (*shipsSunk == 0)
+        {
+            printf("Need to sink a ship to unlock smoke screen.\n");
+        }
+        else
+        {
+            int row;
+            char col;
+            printf("Enter coordinates to apply smoke screen (row column, e.g., 3 B): ");
+            if (scanf("%d %c", &row, &col) == 2)
+            {
+                clearInputBuffer();
+                col = toupper(col) - 'A';
+                row--;
+
+                if (row < 0 || row >= GRID_SIZE - 1 || col < 0 || col >= GRID_SIZE - 1)
+                {
+                    printf("Invalid coordinates. You lost your turn!\n");
+                    validMove = 1;
+                }
+                else
+                {
+                    applySmokeScreen(playerRadar, row, col, shipsSunk, smokeUsed, &lostTurn, player);
+                    validMove = 1;
+                }
+            }
+            else
+            {
+                printf("Invalid input. Try again.\n");
+                clearInputBuffer();
+            }
+        }
+        break;
+    }
+    default:
+        printf("Invalid move. Try again.\n");
+        break;
+    }
+    return validMove;
+}
 
 
 
