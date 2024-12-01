@@ -1084,7 +1084,55 @@ void displayBoard(char board[GRID_SIZE][GRID_SIZE], int showMisses, int hideShip
     }
 }
 
+// Requires: 
+// - board is a valid 2D array of size GRID_SIZE x GRID_SIZE.
+// - row and col are valid indices within the range [0, GRID_SIZE - 1].
+// - shipsSunk is a valid pointer to an integer that tracks the number of ships sunk.
+// - showMisses is an integer flag indicating whether to display missed shots (1 = show, 0 = hide).
+// - GRID_SIZE is defined and greater than 0.
+// - The function depends on a helper function `checkShipSunk()` to determine if a ship is sunk.
+// Effects: 
+// - Fires at the specified (row, col) location on the board.
+// - If the location is already marked as hit ('*') or missed ('o') and `showMisses` is 1, returns -1 to indicate invalid action.
+// - If the location is '~', it marks the cell as a miss ('o') and prints "Miss!".
+// - If the location contains a ship (any other character), marks the cell as hit ('*'), prints "Hit!", and checks if the ship is sunk:
+//   - If the ship is sunk, increments `shipsSunk`, prints the name of the sunk ship, and unlocks special moves:
+//     - Unlocks "Artillery" after sinking 1 ship.
+//     - Unlocks "Torpedo" after sinking 3 ships.
+// - Returns 1 if the shot is valid (hit or miss).
+int fireAt(char board[GRID_SIZE][GRID_SIZE], int row, int col, int *shipsSunk, int showMisses)
+{
+    if ((board[row][col] == '*' || board[row][col] == 'o') && showMisses == 1)
+    {
+        return -1;
+    }
 
+    if (board[row][col] == '~')
+    {
+        printf("Miss!\n");
+        board[row][col] = 'o';
+    }
+    else
+    {
+        printf("Hit!\n");
+        char shipChar = board[row][col];
+        board[row][col] = '*';
+
+        const char *sunkShip = checkShipSunk(board, shipChar);
+        if (sunkShip != NULL)
+        {
+            printf("You sunk the %s!\n", sunkShip);
+            (*shipsSunk)++;
+
+            if (*shipsSunk == 1)
+                printf("Artillery unlocked!\n");
+            if (*shipsSunk >= 3)
+                printf("Torpedo unlocked!\n");
+        }
+    }
+
+    return 1;
+}
 
 
 
