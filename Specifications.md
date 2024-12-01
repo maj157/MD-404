@@ -83,3 +83,29 @@ int askDifficulty() {
     return (difficulty == 1) ? 1 : 0; // Return 1 for easy, 0 for hard
 }
 
+// Requires: The program is running on a supported platform 
+//           (_WIN32 for Windows or macOS/Linux).
+// Effects: Clears the terminal screen by using the appropriate system command 
+//          for the platform and moves the cursor to the top-left corner.
+void clearScreen()
+{
+#ifdef _WIN32
+    system("cls"); // Clear screen on Windows
+#else
+    system("clear"); // Clear screen on macOS/Linux
+#endif
+    printf("\033[H\033[J");
+    fflush(stdout);
+}
+
+// Requires: Input buffer contains data.
+// Effects: Clears the input buffer by reading and discarding all characters 
+//          until a newline ('\n') or EOF is encountered.
+void clearInputBuffer()
+{
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF)
+        ;
+}
+
+
