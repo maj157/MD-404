@@ -61,3 +61,25 @@ void initializeSmokeEffectGrid()
         }
     }
 }
+
+// Requires: No input parameters. The function assumes standard input is available for reading user input.
+//           The function uses a helper function `clearInputBuffer()` to clear the input buffer.
+// Effects:  Prompts the user to choose a difficulty level for the game.
+//           Reads an integer input from the user. 
+//           If the input is invalid or not 1 or 2, defaults to hard mode (difficulty = 2).
+//           Returns 1 for easy mode (track hits and misses) or 0 for hard mode (track only hits).
+int askDifficulty() {
+    printf("Welcome to Battleship!\n\n");
+    int difficulty;
+    printf("Choose tracking difficulty level:\n");
+    printf("1. Easy (Track hits and misses)\n");
+    printf("2. Hard (Track only hits)\n");
+    printf("Enter 1 or 2: ");
+    if (scanf("%d", &difficulty) != 1 || (difficulty != 1 && difficulty != 2)) {
+        printf("Invalid input. Defaulting to hard mode.\n");
+        difficulty = 2;
+    }
+    clearInputBuffer();
+    return (difficulty == 1) ? 1 : 0; // Return 1 for easy, 0 for hard
+}
+
