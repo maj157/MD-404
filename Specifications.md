@@ -108,4 +108,23 @@ void clearInputBuffer()
         ;
 }
 
+// Requires: board is a valid 2D array of size GRID_SIZE x GRID_SIZE.
+//           GRID_SIZE is defined and greater than 0.
+//           playerName is a valid, null-terminated string.
+//           The function depends on helper functions `placeShip`, `sleep`, and `clearScreen`.
+// Effects:  Prompts the specified player to place their fleet on the board.
+//           Calls `placeShip` for each ship type (Carrier, Battleship, Destroyer, Submarine),
+//           specifying the size, name, and character representation of each ship.
+//           Pauses execution for 2 seconds using `sleep` and then clears the screen using `clearScreen`.
+void placeFleet(char board[GRID_SIZE][GRID_SIZE], const char *playerName) {
+    printf("\n%s, it's time to place your fleet!\n", playerName);
+    placeShip(board, 5, "Carrier", playerName, 'C');
+    placeShip(board, 4, "Battleship", playerName, 'B');
+    placeShip(board, 3, "Destroyer", playerName, 'D');
+    placeShip(board, 2, "Submarine", playerName, 'S');
+    sleep(2);
+    clearScreen();
+}
+
+
 
